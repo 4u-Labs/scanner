@@ -1,0 +1,6 @@
+api/
+.env
+auth.php
+*.db
+*.sqlite
+*.log
