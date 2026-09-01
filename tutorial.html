@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tutorial - DocScan Pro</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            overflow-y: auto;
+            background: var(--bg-primary);
+            padding: 20px;
+            padding-bottom: 80px;
+        }
+
+        .tutorial-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .tutorial-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .back-btn {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 8px 16px;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        section {
+            margin-bottom: 40px;
+            background: var(--bg-card);
+            padding: 24px;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            margin: 0;
+        }
+
+        h2 {
+            font-size: 1.4rem;
+            color: var(--accent-secondary);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        h3 {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+
+        p {
+            color: var(--text-secondary);
+            margin-bottom: 15px;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .feature-item {
+            background: var(--bg-tertiary);
+            padding: 15px;
+            border-radius: var(--radius-md);
+        }
+
+        .icon {
+            font-size: 1.5rem;
+        }
+
+        .step-list {
+            list-style: none;
+            counter-reset: steps;
+        }
+
+        .step-list li {
+            position: relative;
+            padding-left: 45px;
+            margin-bottom: 20px;
+            color: var(--text-secondary);
+        }
+
+        .step-list li::before {
+            counter-increment: steps;
+            content: counter(steps);
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 30px;
+            height: 30px;
+            background: var(--accent-gradient);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .highlight-box {
+            background: rgba(108, 92, 231, 0.1);
+            border-left: 4px solid var(--accent-primary);
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 var(--radius-md) var(--radius-md) 0;
+        }
+
+        .filter-demo {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+        }
+
+        .filter-chip {
+            background: var(--bg-tertiary);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+
+        .tag {
+            background: var(--success);
+            color: black;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            vertical-align: middle;
+            margin-left: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="tutorial-container">
+        <header class="tutorial-header">
+            <a href="index.html" class="back-btn">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                    <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+                </svg>
+                Voltar
+            </a>
+            <h1>Guia do Usuário DocScan Pro</h1>
+        </header>
+
+        <section id="basics">
+            <h2><span class="icon">🚀</span> Primeiros Passos</h2>
+            <p>O DocScan Pro é o seu scanner de bolso profissional. Aqui você aprende a tirar o máximo proveito dele.
+            </p>
+            <ul class="step-list">
+                <li>
+                    <h3>Capture o Documento</h3>
+                    Toque no botão central da câmera. O app abrirá a câmera nativa do seu celular para garantir a
+                    <strong>máxima resolução</strong> possível.
+                </li>
+                <li>
+                    <h3>Ajuste as Bordas</h3>
+                    O sistema tentará detectar as bordas automaticamente. Se necessário, arraste os pontos roxos nas
+                    quinas para alinhar perfeitamente com o papel.
+                </li>
+                <li>
+                    <h3>Aplique Filtros</h3>
+                    Mude para a aba "Filtros" para clarear o documento. O filtro <strong>Mágico</strong> é ativado por
+                    padrão para entregar um fundo branco e texto nítido.
+                </li>
+            </ul>
+        </section>
+
+        <section id="filters">
+            <h2><span class="icon">✨</span> Filtros e Qualidade</h2>
+            <p>Nossos filtros são otimizados para converter fotos de celular em documentos que parecem escaneados em
+                mesa oficial.</p>
+            <div class="feature-grid">
+                <div class="feature-item">
+                    <h3>Varinha Mágica <span class="tag">TOP</span></h3>
+                    <p>Remove sombras, clareia fundos cinzas e destaca a tinta preta. Ideal para notas fiscais,
+                        contratos e formulários.</p>
+                </div>
+                <div class="feature-item">
+                    <h3>Documento (P&B)</h3>
+                    <p>Transforma a imagem em preto e branco absoluto. Ótimo para texto puro onde você quer o arquivo
+                        mais leve possível.</p>
+                </div>
+            </div>
+            <div class="highlight-box">
+                <strong>Dica de Qualidade:</strong> O app sempre processa a imagem final usando a resolução original da
+                foto, garantindo que mesmo letras pequenas fiquem legíveis ao exportar para PDF.
+            </div>
+        </section>
+
+        <section id="ocr">
+            <h2><span class="icon">🔍</span> Extração de Texto (OCR)</h2>
+            <p>Transforme fotos em texto editável em segundos usando nossa engine avançada baseada em Tesseract.js.</p>
+            <ul class="step-list">
+                <li>Abra um arquivo ou use o editor durante um novo scan.</li>
+                <li>Toque no botão <strong>Extrair Texto (OCR)</strong>.</li>
+                <li>O app carregará os modelos de idioma (Português e Inglês) e processará a imagem.</li>
+                <li>Copie o texto extraído para usar em outros aplicativos.</li>
+            </ul>
+            <div class="highlight-box">
+                <strong>Bônus Inicial:</strong> Novos usuários ganham automaticamente <strong>20 créditos
+                    gratuitos</strong> para testar o OCR! Cada extração consome 1 crédito.
+            </div>
+        </section>
+
+        <section id="credits">
+            <h2><span class="icon">💳</span> Créditos e Pagamentos</h2>
+            <p>O scan básico, filtros e exportação para PDF são <strong>gratuitos e ilimitados</strong>. O OCR requer
+                créditos para cobrir o processamento persistente.</p>
+            <div class="feature-grid">
+                <div class="feature-item">
+                    <h3>Como comprar</h3>
+                    <p>No menu lateral, toque em "Comprar Créditos". Escolha um pacote e pague via <strong>PIX</strong>
+                        para liberação imediata.</p>
+                </div>
+                <div class="feature-item">
+                    <h3>Pacotes</h3>
+                    <p>Temos planos de 10, 25 (Mais Popular) e 60 créditos, com preços a partir de R$ 5,00.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="folders">
+            <h2><span class="icon">🔒</span> Organização e Segurança</h2>
+            <p>Mantenha seus documentos em ordem e seguros.</p>
+            <div class="feature-grid">
+                <div class="feature-item">
+                    <h3>Pastas com PIN</h3>
+                    <p>Você pode criar pastas protegidas por senha. Ideal para documentos pessoais ou sensíveis.</p>
+                </div>
+                <div class="feature-item">
+                    <h3>Nuvem (Google Drive)</h3>
+                    <p>Conecte sua conta do Google Drive nas configurações para fazer backup automático dos seus
+                        documentos e acessá-los de qualquer lugar.</p>
+                </div>
+            </div>
+        </section>
+
+        <footer style="text-align: center; color: var(--text-muted); font-size: 0.9rem;">
+            DocScan Pro © 2026 - Digitalização Inteligente
+        </footer>
+    </div>
+</body>
+
+</html>
