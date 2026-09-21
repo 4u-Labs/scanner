@@ -347,21 +347,67 @@ body {
 }
 
 /* ============================================
-   BREADCRUMB - COMPACTO
+   BREADCRUMB & INSTALL BAR
    ============================================ */
+.breadcrumb-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 12px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+}
+
 .breadcrumb {
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 8px 10px;
-    background: var(--bg-secondary);
+    padding: 0;
+    background: transparent;
     overflow-x: auto;
     scrollbar-width: none;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: none;
+    flex: 1;
 }
 
 .breadcrumb::-webkit-scrollbar {
     display: none;
+}
+
+.main-install-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: linear-gradient(135deg, rgba(109, 74, 255, 0.22) 0%, rgba(0, 210, 255, 0.16) 100%);
+    border: 1px solid rgba(109, 74, 255, 0.45);
+    border-radius: 20px;
+    color: #c4b5fd;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 2px 8px rgba(109, 74, 255, 0.15);
+    text-decoration: none;
+}
+
+.main-install-btn:hover {
+    background: linear-gradient(135deg, rgba(109, 74, 255, 0.38) 0%, rgba(0, 210, 255, 0.25) 100%);
+    border-color: rgba(109, 74, 255, 0.7);
+    color: #ffffff;
+    box-shadow: 0 4px 14px rgba(109, 74, 255, 0.35);
+    transform: translateY(-1px);
+}
+
+.main-install-btn:active {
+    transform: translateY(0);
+}
+
+.main-install-btn svg {
+    flex-shrink: 0;
 }
 
 .breadcrumb-item {

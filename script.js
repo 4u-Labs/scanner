@@ -374,31 +374,70 @@ function setupEventListeners() {
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         state.deferredPrompt = e;
-        $('menuInstall').classList.remove('hidden');
-        $('installDivider').classList.remove('hidden');
+        $('menuInstall')?.classList.remove('hidden');
+        $('installDivider')?.classList.remove('hidden');
+        $('mainInstallBtn')?.classList.remove('hidden');
     });
 
-    $('menuInstall').onclick = async () => {
-        if (!state.deferredPrompt) return;
-        state.deferredPrompt.prompt();
-        const { outcome } = await state.deferredPrompt.userChoice;
-        console.log(`User response to the install prompt: ${outcome}`);
-        state.deferredPrompt = null;
-        $('menuInstall').classList.add('hidden');
-        $('installDivider').classList.add('hidden');
+    $('menuInstall').onclick = () => {
+        triggerPwaInstall();
         toggleSideMenu(false);
     };
 
     window.addEventListener('appinstalled', () => {
         state.deferredPrompt = null;
-        $('menuInstall').classList.add('hidden');
-        $('installDivider').classList.add('hidden');
+        $('menuInstall')?.classList.add('hidden');
+        $('installDivider')?.classList.add('hidden');
+        $('mainInstallBtn')?.classList.add('hidden');
         console.log('App installed');
     });
+
+    // Standalone check & iOS support on init
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    if (isStandalone) {
+        $('mainInstallBtn')?.classList.add('hidden');
+        $('menuInstall')?.classList.add('hidden');
+        $('installDivider')?.classList.add('hidden');
+    } else {
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        if (isIOS) {
+            $('mainInstallBtn')?.classList.remove('hidden');
+            $('menuInstall')?.classList.remove('hidden');
+            $('installDivider')?.classList.remove('hidden');
+        }
+    }
 
     // Crop Handles
     setupCropHandles();
 }
+
+// ============================================
+// PWA Installation Trigger
+// ============================================
+async function triggerPwaInstall() {
+    if (typeof triggerHaptic === 'function') triggerHaptic('medium');
+    if (state.deferredPrompt) {
+        state.deferredPrompt.prompt();
+        const { outcome } = await state.deferredPrompt.userChoice;
+        console.log(`User response to the install prompt: ${outcome}`);
+        state.deferredPrompt = null;
+        $('menuInstall')?.classList.add('hidden');
+        $('installDivider')?.classList.add('hidden');
+        $('mainInstallBtn')?.classList.add('hidden');
+    } else {
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        if (isIOS) {
+            alert(currentLang === 'en' 
+                ? 'To install this app on your iPhone/iPad, tap Share (⎋) in Safari and choose "Add to Home Screen".' 
+                : 'Para instalar este app no seu iPhone/iPad, toque em Compartilhar (⎋) no Safari e escolha "Adicionar à Tela de Início".');
+        } else {
+            alert(currentLang === 'en' 
+                ? 'To install this app, open your browser menu (⋮) and tap "Install app" or "Add to Home screen".' 
+                : 'Para instalar este app, abra o menu do navegador (⋮) e toque em "Instalar aplicativo" ou "Adicionar à tela inicial".');
+        }
+    }
+}
+window.triggerPwaInstall = triggerPwaInstall;
 
 // ============================================
 // UI Updates
@@ -3368,6 +3407,7 @@ const I18N_DICT = {
         menu_tutorial: "Ajuda e Tutorial",
         menu_about: "Sobre",
         menu_install: "Instalar App",
+        install_app: "Instalar App",
         camera_live: "Câmera ao Vivo (4K)",
         batch_mode: "Modo Lote (Várias Págs)",
         gallery: "Galeria",
@@ -3509,6 +3549,7 @@ const I18N_DICT = {
         menu_tutorial: "Help & Tutorial",
         menu_about: "About",
         menu_install: "Install App",
+        install_app: "Install App",
         camera_live: "Live Camera (4K)",
         batch_mode: "Batch Mode (Multi-Page)",
         gallery: "Gallery",

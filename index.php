@@ -174,14 +174,22 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
         </div>
 
         <!-- Navigation -->
-        <nav id="breadcrumb" class="breadcrumb">
-            <button class="breadcrumb-item active" data-folder="root">
-                <svg viewBox="0 0 24 24">
-                    <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+        <div class="breadcrumb-container">
+            <nav id="breadcrumb" class="breadcrumb">
+                <button class="breadcrumb-item active" data-folder="root">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+                    </svg>
+                    <span>Início</span>
+                </button>
+            </nav>
+            <button id="mainInstallBtn" class="main-install-btn hidden" onclick="triggerPwaInstall()">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
+                    <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
                 </svg>
-                <span>Início</span>
+                <span data-i18n="install_app">Instalar App</span>
             </button>
-        </nav>
+        </div>
 
         <!-- Main Content -->
         <main class="main-content">
