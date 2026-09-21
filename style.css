@@ -1150,6 +1150,65 @@ body {
     cursor: grabbing;
 }
 
+/* Lupa de Alta Precisão (Corner Magnifier Loupe) */
+.corner-magnifier {
+    position: absolute;
+    width: 130px;
+    height: 130px;
+    border-radius: 50%;
+    border: 3px solid #ffffff;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5), 0 0 0 2px var(--accent-primary);
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 120;
+    background: #1e1e24;
+    transform: translate(-50%, -100%);
+    transition: opacity 0.12s ease;
+}
+
+.corner-magnifier.hidden {
+    opacity: 0;
+    display: none;
+    pointer-events: none;
+}
+
+#magnifierCanvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.magnifier-crosshair {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.magnifier-crosshair::before,
+.magnifier-crosshair::after {
+    content: '';
+    position: absolute;
+    background: rgba(239, 68, 68, 0.9);
+}
+
+.magnifier-crosshair::before {
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1.5px;
+    transform: translateY(-50%);
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.6);
+}
+
+.magnifier-crosshair::after {
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 1.5px;
+    transform: translateX(-50%);
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.6);
+}
+
 /* Remove static corner positioning — JS controls left/top now */
 
 .crop-grid {
@@ -1193,7 +1252,8 @@ body {
     flex-wrap: wrap;
 }
 
-.ratio-btn {
+.ratio-btn,
+.redact-btn {
     flex: 1;
     min-width: 60px;
     padding: 10px 8px;
@@ -1208,7 +1268,8 @@ body {
     text-align: center;
 }
 
-.ratio-btn.active {
+.ratio-btn.active,
+.redact-btn.active {
     border-color: var(--accent-primary);
     background: var(--accent-primary);
     color: white;
@@ -2892,6 +2953,18 @@ body.theme-light {
     transform: scale(1.2);
 }
 
+.slider-row input[type="range"]::-moz-range-progress {
+    background: var(--accent-primary);
+    height: 4px;
+    border-radius: 2px;
+}
+
+.slider-row input[type="range"]::-moz-range-track {
+    background: var(--border-color);
+    height: 4px;
+    border-radius: 2px;
+}
+
 /* ============================================
    SWIPE TO DELETE
    ============================================ */
@@ -3385,6 +3458,7 @@ body.theme-light {
     height: 200px;
     display: block;
     cursor: crosshair;
+    touch-action: none;
 }
 
 .signature-controls {
@@ -3613,17 +3687,19 @@ body.theme-light {
     left: 0;
     right: 0;
     height: 64px;
-    padding: 0 16px;
+    padding: 0 12px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     background: linear-gradient(180deg, rgba(0,0,0,0.85) 0%, transparent 100%);
-    z-index: 20;
+    z-index: 30;
+    gap: 8px;
 }
 
 .camera-icon-btn {
-    width: 44px;
-    height: 44px;
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.18);
     border: none;
@@ -3634,11 +3710,13 @@ body.theme-light {
     cursor: pointer;
     backdrop-filter: blur(10px);
     transition: var(--transition);
+    position: relative;
+    flex-shrink: 0;
 }
 
 .camera-icon-btn svg {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
     fill: currentColor;
 }
 
@@ -3647,14 +3725,48 @@ body.theme-light {
     background: rgba(255, 255, 255, 0.35);
 }
 
+.camera-top-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.camera-icon-btn.active {
+    background: #ffb703;
+    color: #0f172a;
+    box-shadow: 0 0 16px rgba(255, 183, 3, 0.7);
+}
+
+.camera-icon-btn.auto-active {
+    background: #10b981;
+    color: #ffffff;
+    box-shadow: 0 0 16px rgba(16, 185, 129, 0.7);
+}
+
+.auto-capture-badge {
+    position: absolute;
+    bottom: 2px;
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    line-height: 1;
+    text-transform: uppercase;
+}
+
 .camera-title-badge {
     background: rgba(108, 92, 231, 0.85);
     color: #ffffff;
-    padding: 6px 14px;
+    padding: 6px 12px;
     border-radius: 999px;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
     backdrop-filter: blur(8px);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 140px;
+    text-align: center;
 }
 
 .camera-viewport-container {
@@ -4067,23 +4179,26 @@ body.theme-light {
 
 .id-card-step-banner {
     position: absolute !important;
-    top: 14px !important;
+    top: 76px !important;
     left: 50% !important;
     transform: translateX(-50%) !important;
-    background: rgba(15, 23, 42, 0.9) !important;
-    border: 1.5px solid #6366f1 !important;
-    backdrop-filter: blur(10px) !important;
+    background: rgba(15, 23, 42, 0.95) !important;
+    border: 2px solid #6366f1 !important;
+    backdrop-filter: blur(12px) !important;
     color: #ffffff !important;
-    padding: 8px 18px !important;
+    padding: 8px 20px !important;
     border-radius: 30px !important;
-    font-size: 13px !important;
+    font-size: 14px !important;
     font-weight: 700 !important;
     display: flex !important;
     align-items: center !important;
+    justify-content: center !important;
     gap: 8px !important;
-    z-index: 12 !important;
-    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4) !important;
-    animation: pulseBanner 2s infinite ease-in-out !important;
+    z-index: 25 !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6), 0 0 12px rgba(99, 102, 241, 0.5) !important;
+    white-space: nowrap !important;
+    max-width: 90vw !important;
+    pointer-events: none !important;
 }
 
 .id-card-step-banner.hidden {
@@ -4105,4 +4220,112 @@ body.theme-light {
     pointer-events: auto;
     cursor: crosshair;
     z-index: 15;
+}
+
+/* ============================================
+   MOVABLE SIGNATURE OVERLAY STYLES
+   ============================================ */
+.signature-overlay-box {
+    position: absolute;
+    border: 2px dashed #6366f1;
+    border-radius: 8px;
+    background: rgba(99, 102, 241, 0.08);
+    cursor: move;
+    touch-action: none;
+    user-select: none;
+    z-index: 50;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+}
+
+.signature-drag-header {
+    position: absolute;
+    top: -46px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 11px;
+    color: #fff;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    z-index: 52;
+}
+
+.sig-action-buttons {
+    display: flex;
+    gap: 6px;
+}
+
+.btn-sig-confirm {
+    background: #10b981;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.btn-sig-confirm:active {
+    transform: scale(0.96);
+}
+
+.btn-sig-cancel {
+    background: #ef4444;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 5px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.signature-img-wrapper {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.signature-img-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+    display: block;
+}
+
+.sig-resize-handle {
+    position: absolute;
+    right: -10px;
+    bottom: -10px;
+    width: 26px;
+    height: 26px;
+    background: #6366f1;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    cursor: se-resize;
+    touch-action: none;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    z-index: 51;
+}
+
+/* Redact Selection Box Live Preview */
+.redact-selection-box {
+    position: absolute;
+    border: 2px dashed #f59e0b;
+    background: rgba(245, 158, 11, 0.15);
+    pointer-events: none;
+    z-index: 20;
 }

@@ -41,7 +41,7 @@ const state = {
 };
 
 // Google Drive Config (OAuth 2.0 / Google Identity Services)
-const GOOGLE_CLIENT_ID = '86183940183-qegicgt1h8biud5vagdhuuug6i68q5km.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = '569266864432-pd09jbb5no9ekdhdr018fj643nopp817.apps.googleusercontent.com';
 const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email openid';
 
 // DOM Elements
@@ -267,7 +267,7 @@ function setupEventListeners() {
     $('menuStats').onclick = () => { showStats(); toggleSideMenu(false); };
     $('menuBackup').onclick = () => { showBackupOptions(); toggleSideMenu(false); };
     $('menuSettings').onclick = () => { openModal('settingsModal'); toggleSideMenu(false); };
-    $('menuTutorial').onclick = () => { window.location.href = 'tutorial.html'; };
+    $('menuTutorial').onclick = () => { window.location.href = 'tutorial.html?lang=' + (typeof currentLang !== 'undefined' ? currentLang : 'pt'); };
     $('menuAbout').onclick = () => { openModal('aboutModal'); toggleSideMenu(false); };
 
     // Logo DEV mode (5 clicks)
@@ -311,7 +311,7 @@ function setupEventListeners() {
     $$('.editor-tab').forEach(tab => tab.onclick = () => switchEditorTab(tab.dataset.tab));
 
     // Crop Tools
-    $$('.ratio-btn').forEach(btn => btn.onclick = () => setRatio(btn.dataset.ratio));
+    $$('#cropTools .ratio-btn').forEach(btn => btn.onclick = () => setRatio(btn.dataset.ratio));
     $('autoDetectBtn').onclick = autoDetectEdges;
     $('resetCropBtn').onclick = resetCrop;
 
@@ -490,11 +490,12 @@ function updateDocumentsGrid() {
 
 function updateBreadcrumb() {
     const nav = $('breadcrumb');
+    const homeLabel = (typeof I18N_DICT !== 'undefined' && I18N_DICT[currentLang]) ? I18N_DICT[currentLang].home : 'Início';
     let html = `
         <button class="breadcrumb-item ${state.currentFolder === 'root' ? 'active' : ''}" 
                 data-folder="root" onclick="navigateToFolder('root')">
             <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
-            <span>Início</span>
+            <span>${homeLabel}</span>
         </button>
     `;
 
@@ -564,15 +565,20 @@ function updatePendingBadge() {
 }
 
 function updateDriveStatus() {
+    const isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
     const status = $('driveStatus');
     if (status) {
-        status.textContent = state.driveConnected ? 'Conectado ao Drive' : 'Não conectado';
+        status.textContent = state.driveConnected 
+            ? (isEn ? 'Connected to Drive' : 'Conectado ao Drive')
+            : (isEn ? 'Not connected' : 'Não conectado');
     }
     const menuDriveConnect = $('menuDriveConnect');
     if (menuDriveConnect) {
         const span = menuDriveConnect.querySelector('span');
         if (span) {
-            span.textContent = state.driveConnected ? 'Gerenciar Google Drive' : 'Conectar Google Drive';
+            span.textContent = state.driveConnected 
+                ? (isEn ? 'Manage Google Drive' : 'Gerenciar Google Drive')
+                : (isEn ? 'Connect Google Drive' : 'Conectar Google Drive');
         }
     }
     updateUserProfileUI(state.googleProfile);
@@ -804,6 +810,21 @@ function switchEditorTab(tab) {
     } else {
         enableEraserMode(false);
     }
+
+    if (tab === 'adjust') {
+        ['brightnessSlider', 'contrastSlider', 'saturationSlider'].forEach(id => {
+            const s = $(id);
+            if (s && typeof updateSliderTrack === 'function') updateSliderTrack(s);
+        });
+    }
+
+    if (tab === 'redact') {
+        const canvas = $('editorCanvas');
+        if (canvas && canvas.width) {
+            redactInitialSnapshot = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+            redactConfig.history = [];
+        }
+    }
 }
 
 function drawImageToCanvas() {
@@ -847,6 +868,10 @@ function setupCropHandles() {
             e.stopPropagation();
             dragging = true;
             triggerHaptic(20);
+            const touch = e.touches ? e.touches[0] : e;
+            const corner = handle.dataset.corner;
+            const pt = state.cropPoints[corner];
+            if (pt) renderCornerMagnifier(handle, touch.clientX, touch.clientY, pt.x, pt.y);
         };
 
         const moveDrag = (e) => {
@@ -866,9 +891,15 @@ function setupCropHandles() {
             const corner = handle.dataset.corner;
             state.cropPoints[corner] = { x, y };
             updateCropOverlay();
+            renderCornerMagnifier(handle, touch.clientX, touch.clientY, x, y);
         };
 
-        const endDrag = () => { dragging = false; };
+        const endDrag = () => {
+            if (dragging) {
+                dragging = false;
+                hideCornerMagnifier();
+            }
+        };
 
         handle.addEventListener('mousedown', startDrag);
         handle.addEventListener('touchstart', startDrag, { passive: false });
@@ -877,6 +908,62 @@ function setupCropHandles() {
         document.addEventListener('mouseup', endDrag);
         document.addEventListener('touchend', endDrag);
     });
+}
+
+function renderCornerMagnifier(handle, clientX, clientY, xPct, yPct) {
+    const magnifier = $('cornerMagnifier');
+    const magCanvas = $('magnifierCanvas');
+    const container = document.querySelector('.editor-canvas-container');
+    if (!magnifier || !magCanvas || !container) return;
+
+    const img = state.originalImage || $('editorCanvas');
+    if (!img) return;
+
+    const imgWidth = img.naturalWidth || img.width;
+    const imgHeight = img.naturalHeight || img.height;
+    if (!imgWidth || !imgHeight) return;
+
+    const containerRect = container.getBoundingClientRect();
+    let relX = clientX - containerRect.left;
+    let relY = clientY - containerRect.top - 80;
+
+    // Flip below finger if too close to container top
+    if (relY < 65) {
+        relY = clientY - containerRect.top + 75;
+    }
+
+    // Clamp horizontally inside container
+    relX = Math.max(68, Math.min(containerRect.width - 68, relX));
+
+    magnifier.style.left = `${relX}px`;
+    magnifier.style.top = `${relY}px`;
+    magnifier.classList.remove('hidden');
+
+    const ctx = magCanvas.getContext('2d');
+    const magW = magCanvas.width;
+    const magH = magCanvas.height;
+
+    ctx.clearRect(0, 0, magW, magH);
+
+    // Zoom factor 2.8x for crisp corner inspection
+    const zoom = 2.8;
+    const srcCropW = magW / zoom;
+    const srcCropH = magH / zoom;
+
+    const centerImgX = (xPct / 100) * imgWidth;
+    const centerImgY = (yPct / 100) * imgHeight;
+
+    const srcX = centerImgX - srcCropW / 2;
+    const srcY = centerImgY - srcCropH / 2;
+
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, srcX, srcY, srcCropW, srcCropH, 0, 0, magW, magH);
+}
+
+function hideCornerMagnifier() {
+    const magnifier = $('cornerMagnifier');
+    if (magnifier) magnifier.classList.add('hidden');
 }
 
 function updateCropOverlay() {
@@ -937,7 +1024,7 @@ function updateCropOverlay() {
 
 function setRatio(ratio) {
     state.currentRatio = ratio;
-    $$('.ratio-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.ratio === ratio));
+    $$('#cropTools .ratio-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.ratio === ratio));
 
     if (ratio !== 'free') {
         adjustCropToRatio(ratio);
@@ -990,7 +1077,7 @@ function resetCrop() {
         br: { x: 95, y: 95 }
     };
     state.currentRatio = 'free';
-    $$('.ratio-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.ratio === 'free'));
+    $$('#cropTools .ratio-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.ratio === 'free'));
     updateCropOverlay();
 }
 
@@ -1546,13 +1633,31 @@ function rotateImage(degrees) {
 // ============================================
 // Image Adjustments — Sliders
 // ============================================
+function updateSliderTrack(slider) {
+    if (!slider) return;
+    const min = parseFloat(slider.min) !== undefined && !isNaN(parseFloat(slider.min)) ? parseFloat(slider.min) : -100;
+    const max = parseFloat(slider.max) !== undefined && !isNaN(parseFloat(slider.max)) ? parseFloat(slider.max) : 100;
+    const val = parseFloat(slider.value) || 0;
+    const percent = Math.max(0, Math.min(100, ((val - min) / (max - min)) * 100));
+    slider.style.background = `linear-gradient(to right, var(--accent-primary) 0%, var(--accent-primary) ${percent}%, var(--border-color) ${percent}%, var(--border-color) 100%)`;
+}
+
 // Debounce helper so oninput doesn't fire too rapidly
 let _adjustTimer = null;
 function applyAdjustments() {
+    const bSlider = $('brightnessSlider');
+    const cSlider = $('contrastSlider');
+    const sSlider = $('saturationSlider');
+
+    // Dynamically update the purple progress line on each slider
+    if (bSlider) updateSliderTrack(bSlider);
+    if (cSlider) updateSliderTrack(cSlider);
+    if (sSlider) updateSliderTrack(sSlider);
+
     // Update labels
-    const bv = parseInt($('brightnessSlider').value);
-    const cv = parseInt($('contrastSlider').value);
-    const sv = parseInt($('saturationSlider').value);
+    const bv = parseInt(bSlider?.value || 0);
+    const cv = parseInt(cSlider?.value || 0);
+    const sv = parseInt(sSlider?.value || 0);
     $('brightnessVal').textContent = bv > 0 ? `+${bv}` : bv;
     $('contrastVal').textContent = cv > 0 ? `+${cv}` : cv;
     $('saturationVal').textContent = sv > 0 ? `+${sv}` : sv;
@@ -1600,7 +1705,13 @@ function applyAdjustments() {
 }
 
 function resetAdjustments() {
-    ['brightnessSlider', 'contrastSlider', 'saturationSlider'].forEach(id => { $(id).value = 0; });
+    ['brightnessSlider', 'contrastSlider', 'saturationSlider'].forEach(id => {
+        const s = $(id);
+        if (s) {
+            s.value = 0;
+            updateSliderTrack(s);
+        }
+    });
     ['brightnessVal', 'contrastVal', 'saturationVal'].forEach(id => { $(id).textContent = '0'; });
     // Redraw without adjustments
     drawImageToCanvas();
@@ -1697,6 +1808,9 @@ function resetAdjustments() {
 // Finish Editing
 // ============================================
 function finishEditing() {
+    if (typeof confirmSignaturePlacement === 'function' && $('signatureOverlayBox')) {
+        confirmSignaturePlacement();
+    }
     showLoading('Processando...');
 
     setTimeout(() => {
@@ -2050,6 +2164,7 @@ function openMultiPageModal() {
 }
 
 function updatePagesGrid() {
+    window.renderPagesGrid = updatePagesGrid;
     const grid = $('pagesGrid');
 
     grid.innerHTML = state.multiPageImages.map((img, i) => `
@@ -2177,9 +2292,57 @@ function generateMultiPagePdf() {
 function openSaveModal() {
     const now = new Date();
     const timestamp = formatTimestamp(now);
-    $('docNameInput').value = `scan-${timestamp}`;
+    const smartName = state.lastOcrText ? suggestSmartDocumentName(state.lastOcrText) : null;
+    $('docNameInput').value = smartName || `scan-${timestamp}`;
     $('folderSelect').value = state.currentFolder;
     openModal('saveModal');
+}
+
+function suggestSmartDocumentName(text) {
+    if (!text || typeof text !== 'string') return null;
+
+    const upper = text.toUpperCase();
+    let docType = null;
+
+    if (upper.includes('NOTA FISCAL') || upper.includes('DANFE') || upper.includes('NFC-E') || upper.includes('NF-E')) {
+        docType = 'Nota_Fiscal';
+    } else if (upper.includes('CUPOM FISCAL') || upper.includes('EXTRATO SAT')) {
+        docType = 'Cupom_Fiscal';
+    } else if (upper.includes('RECIBO')) {
+        docType = 'Recibo';
+    } else if (upper.includes('CONTRATO')) {
+        docType = 'Contrato';
+    } else if (upper.includes('BOLETO') || upper.includes('FATURA') || upper.includes('DUPLICATA')) {
+        docType = 'Boleto_Fatura';
+    } else if (upper.includes('CARTEIRA NACIONAL DE HABILITACAO') || upper.includes('HABILITACAO') || upper.includes('CNH')) {
+        docType = 'CNH';
+    } else if (upper.includes('REGISTRO GERAL') || upper.includes('IDENTIDADE')) {
+        docType = 'RG';
+    } else if (upper.includes('CERTIDAO')) {
+        docType = 'Certidao';
+    } else if (upper.includes('COMPROVANTE')) {
+        docType = 'Comprovante';
+    } else if (upper.includes('RELATORIO') || upper.includes('ORCAMENTO')) {
+        docType = 'Orcamento';
+    }
+
+    if (!docType) return null;
+
+    // Detect date DD/MM/YYYY or DD-MM-YYYY
+    const dateMatch = text.match(/\b([0-3]?\d)[\/\-.]([0-1]?\d)[\/\-.](\d{4})\b/);
+    let dateSuffix = '';
+    if (dateMatch) {
+        const day = dateMatch[1].padStart(2, '0');
+        const month = dateMatch[2].padStart(2, '0');
+        const year = dateMatch[3];
+        dateSuffix = `_${year}-${month}-${day}`;
+    } else {
+        const now = new Date();
+        const pad = n => n.toString().padStart(2, '0');
+        dateSuffix = `_${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    }
+
+    return `${docType}${dateSuffix}`;
 }
 
 function formatTimestamp(date) {
@@ -2189,50 +2352,87 @@ function formatTimestamp(date) {
 
 async function saveDocument(target) {
     const name = $('docNameInput').value || `scan-${formatTimestamp(new Date())}`;
-    const format = document.querySelector('.format-btn.active').dataset.format;
-    const folder = $('folderSelect').value;
+    const formatBtn = document.querySelector('.format-btn.active');
+    const format = formatBtn ? formatBtn.dataset.format : 'pdf';
+    const folder = $('folderSelect') ? $('folderSelect').value : 'root';
 
     showLoading('Salvando...');
 
     try {
+        let imagesToSave = state.multiPageImages && state.multiPageImages.length > 0
+            ? state.multiPageImages
+            : [];
+
+        if (imagesToSave.length === 0) {
+            const canvas = $('editorCanvas');
+            if (canvas && canvas.width) {
+                imagesToSave = [canvas.toDataURL('image/jpeg', 0.9)];
+            } else if (state.originalImage) {
+                imagesToSave = [state.originalImage.src];
+            }
+        }
+
+        if (imagesToSave.length === 0) {
+            throw new Error('Nenhuma imagem encontrada para salvar. Escaneie um documento primeiro.');
+        }
+
         let fileData, fileName, mimeType;
 
-        if (format === 'pdf' || state.multiPageImages.length > 1) {
-            const pdfData = await generatePdf(state.multiPageImages);
+        if (format === 'pdf' || imagesToSave.length > 1) {
+            const pdfData = await generatePdf(imagesToSave);
             fileData = pdfData;
             fileName = `${name}.pdf`;
             mimeType = 'application/pdf';
         } else {
-            fileData = state.multiPageImages[0];
+            fileData = imagesToSave[0];
             fileName = `${name}.jpg`;
             mimeType = 'image/jpeg';
         }
 
-        // Create document record — thumbnail uses the filtered version of the canvas
+        // Create document record
         const doc = {
             id: generateId(),
             name: fileName,
-            image: state.multiPageImages[0],
-            thumbnail: createThumbnailFromCanvas(),
+            image: imagesToSave[0],
+            thumbnail: createThumbnailFromCanvas() || imagesToSave[0],
             folder: folder,
             date: new Date().toISOString(),
             format: format,
-            pageCount: state.multiPageImages.length
+            pageCount: imagesToSave.length
         };
 
-        // Save to IndexedDB
-        await saveToStore('documents', doc);
-        state.documents.push(doc);
-
-        // Download file
+        // Download locally if target requires
         if (target === 'local' || target === 'both') {
             downloadFile(fileData, fileName, mimeType);
         }
 
-        // Upload to Drive
+        let driveUploadSuccess = false;
+        let driveErrorMsg = null;
+
+        // Upload to Drive if target requires
         if (target === 'drive' || target === 'both') {
             if (state.driveConnected && navigator.onLine) {
-                await uploadToDrive(fileData, fileName, mimeType);
+                try {
+                    const uploadResult = await uploadToDrive(fileData, fileName, mimeType);
+                    if (uploadResult && uploadResult.id) {
+                        doc.driveId = uploadResult.id;
+                        driveUploadSuccess = true;
+                    }
+                } catch (dErr) {
+                    console.warn('Erro ao enviar para o Drive na hora de salvar:', dErr);
+                    driveErrorMsg = dErr.message;
+                    // Queue for later sync
+                    const pending = {
+                        id: generateId(),
+                        name: fileName,
+                        data: fileData,
+                        mimeType: mimeType,
+                        timestamp: new Date().toISOString()
+                    };
+                    await saveToStore('pending', pending);
+                    state.pendingUploads.push(pending);
+                    updatePendingBadge();
+                }
             } else {
                 // Queue for later
                 const pending = {
@@ -2244,22 +2444,67 @@ async function saveDocument(target) {
                 };
                 await saveToStore('pending', pending);
                 state.pendingUploads.push(pending);
-                showToast('Sem conexão. Upload pendente adicionado.', 'warning');
+                updatePendingBadge();
             }
         }
+
+        // Save to IndexedDB (always persist locally so user never loses work!)
+        await saveToStore('documents', doc);
+        state.documents.push(doc);
 
         closeModal('saveModal');
         state.multiPageImages = [];
         updateUI();
         hideLoading();
         showSaveSuccessAnimation();
-        showToast('Documento salvo com sucesso! ✓', 'success');
+
+        if (target === 'drive' && !driveUploadSuccess) {
+            if (driveErrorMsg && driveErrorMsg.includes('Google Drive API')) {
+                showDriveApiActivationModal();
+            } else {
+                showToast(driveErrorMsg || 'Salvo no aparelho! Upload no Drive pendente.', 'warning');
+            }
+        } else if (target === 'both' && !driveUploadSuccess) {
+            if (driveErrorMsg && driveErrorMsg.includes('Google Drive API')) {
+                showToast('Salvo no aparelho! Ative a Google Drive API no Google Cloud para enviar à nuvem.', 'warning');
+                showDriveApiActivationModal();
+            } else {
+                showToast('Salvo no aparelho! Upload no Drive pendente.', 'info');
+            }
+        } else {
+            showToast('Documento salvo com sucesso! ✓', 'success');
+        }
 
     } catch (error) {
         console.error('Save error:', error);
         hideLoading();
-        showToast('Erro ao salvar documento', 'error');
+        showToast('Erro ao salvar: ' + (error.message || 'Tente novamente'), 'error');
     }
+}
+
+function showDriveApiActivationModal() {
+    if (typeof Swal === 'undefined') {
+        window.open('https://console.developers.google.com/apis/api/drive.googleapis.com/overview?project=569266864432', '_blank');
+        return;
+    }
+    Swal.fire({
+        icon: 'warning',
+        title: 'Ativar Google Drive API',
+        html: `
+            <div style="text-align: left; font-size: 14px; line-height: 1.6;">
+                <p>O Google Cloud exige que a <strong>Google Drive API</strong> seja ativada no seu projeto <code>569266864432</code> para salvar e sincronizar na nuvem.</p>
+                <p style="margin-top: 10px;">Toque no botão abaixo para abrir a página do Google Cloud e clique em <strong>ATIVAR (ENABLE)</strong>:</p>
+            </div>
+        `,
+        confirmButtonText: '🔗 Abrir Google Cloud para Ativar',
+        confirmButtonColor: '#10b981',
+        showCancelButton: true,
+        cancelButtonText: 'Mais tarde'
+    }).then(res => {
+        if (res.isConfirmed) {
+            window.open('https://console.developers.google.com/apis/api/drive.googleapis.com/overview?project=569266864432', '_blank');
+        }
+    });
 }
 
 async function generatePdf(images) {
@@ -2563,23 +2808,66 @@ async function deleteFolder(id) {
     showToast('Pasta excluída', 'success');
 }
 
+// Tombstones de exclusão para evitar que arquivos deletados ressuscitem no 2-Way Sync
+function getTombstoneDeleted() {
+    try {
+        return JSON.parse(localStorage.getItem('docscan_deleted_records') || '[]');
+    } catch (e) {
+        return [];
+    }
+}
+
+function addTombstoneDeleted(id, driveId, name) {
+    try {
+        const list = getTombstoneDeleted();
+        if (id) list.push(String(id));
+        if (driveId) list.push(String(driveId));
+        if (name) list.push(String(name).toLowerCase().trim());
+        const unique = [...new Set(list)].slice(-500);
+        localStorage.setItem('docscan_deleted_records', JSON.stringify(unique));
+    } catch (e) {}
+}
+
 async function deleteDocument(id) {
     const doc = state.documents.find(d => d.id === id);
-    if (doc && doc.driveId && state.driveConnected && state.driveToken) {
-        try {
-            await fetch(`https://www.googleapis.com/drive/v3/files/${doc.driveId}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${state.driveToken}` }
-            });
-            console.log(`[DocScan] Arquivo ${doc.name} removido do Google Drive.`);
-        } catch (e) {
-            console.warn('Erro ao deletar do Google Drive:', e);
+    if (doc) {
+        addTombstoneDeleted(doc.id, doc.driveId, doc.name);
+
+        if (state.driveConnected && state.driveToken) {
+            try {
+                if (doc.driveId) {
+                    await fetch(`https://www.googleapis.com/drive/v3/files/${doc.driveId}`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${state.driveToken}` }
+                    });
+                    console.log(`[DocScan] Arquivo ${doc.name} (${doc.driveId}) excluído do Google Drive.`);
+                } else if (doc.name) {
+                    // Buscar por nome e deletar do Google Drive
+                    const q = encodeURIComponent(`name = '${doc.name}' and trashed = false`);
+                    const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)`, {
+                        headers: { 'Authorization': `Bearer ${state.driveToken}` }
+                    });
+                    if (searchRes.ok) {
+                        const sData = await searchRes.json();
+                        for (const f of (sData.files || [])) {
+                            await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}`, {
+                                method: 'DELETE',
+                                headers: { 'Authorization': `Bearer ${state.driveToken}` }
+                            });
+                            addTombstoneDeleted(null, f.id, null);
+                            console.log(`[DocScan] Arquivo ${doc.name} (${f.id}) excluído do Drive por nome.`);
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn('Erro ao deletar do Google Drive:', e);
+            }
         }
     }
     await deleteFromStore('documents', id);
     state.documents = state.documents.filter(d => d.id !== id);
     updateUI();
-    showToast('Documento excluído', 'success');
+    showToast('Documento excluído permanentemente', 'success');
 }
 
 // ============================================
@@ -3198,10 +3486,29 @@ const I18N_DICT = {
 
 let currentLang = localStorage.getItem('docscan_lang') || 'pt';
 
+function setAboutLang(lang) {
+    const isEn = lang === 'en';
+    const ptContent = $('aboutContentPt');
+    const enContent = $('aboutContentEn');
+    const btnPt = $('aboutLangPt');
+    const btnEn = $('aboutLangEn');
+    const badge = $('aboutVersionBadge');
+
+    if (ptContent) ptContent.style.display = isEn ? 'none' : 'block';
+    if (enContent) enContent.style.display = isEn ? 'block' : 'none';
+    if (btnPt) btnPt.classList.toggle('active', !isEn);
+    if (btnEn) btnEn.classList.toggle('active', isEn);
+    if (badge) badge.textContent = isEn ? 'Version 2.0.0 — 2026 Edition' : 'Versão 2.0.0 — Edição 2026';
+}
+window.setAboutLang = setAboutLang;
+
 function setLanguage(lang) {
     currentLang = lang === 'en' ? 'en' : 'pt';
     localStorage.setItem('docscan_lang', currentLang);
     const dict = I18N_DICT[currentLang];
+
+    // Update About Modal language
+    setAboutLang(currentLang);
 
     // Update flag button — only the flag emoji
     const flagEl = $('langFlag');
@@ -3225,16 +3532,17 @@ function setLanguage(lang) {
     const sortFavs = document.querySelector('.sort-btn[data-sort="favorites"] span');
     if (sortFavs) sortFavs.textContent = dict.sort_favs;
 
-    // Side Menu Links
+    const isEn = currentLang === 'en';
     const setMenuText = (id, text) => {
         const el = document.querySelector(`#${id} span`);
         if (el) el.textContent = text;
     };
+
     setMenuText('menuHome', dict.menu_home);
     setMenuText('menuFolders', dict.menu_folders);
     setMenuText('menuBuyCredits', dict.menu_credits);
     setMenuText('menuRecent', dict.menu_recent);
-    setMenuText('menuDriveConnect', dict.menu_drive);
+    setMenuText('menuDriveConnect', state.driveConnected ? (isEn ? 'Manage Google Drive' : 'Gerenciar Google Drive') : dict.menu_drive);
     setMenuText('menuPending', dict.menu_pending);
     setMenuText('menuOCR', dict.menu_ocr);
     setMenuText('menuQRCode', dict.menu_qrcode);
@@ -3244,6 +3552,24 @@ function setLanguage(lang) {
     setMenuText('menuTutorial', dict.menu_tutorial);
     setMenuText('menuAbout', dict.menu_about);
     setMenuText('menuInstall', dict.menu_install);
+
+    // Logout button
+    const logoutBtnSpan = document.querySelector('#logoutBtn span');
+    if (logoutBtnSpan) logoutBtnSpan.textContent = isEn ? '🚪 Sign Out' : '🚪 Sair da Conta';
+
+    // Update side menu footer
+    const sideVersion = $('sideMenuVersion');
+    if (sideVersion) sideVersion.textContent = isEn ? 'Version 2.0.0' : 'Versão 2.0.0';
+    const sideMade = $('sideMenuMadeWith');
+    if (sideMade) {
+        sideMade.innerHTML = isEn 
+            ? 'Made with love by <a href="https://4u.ia.br" target="_blank" style="color: var(--accent-secondary); font-weight: bold; text-decoration: none;">4u.ia.br</a>'
+            : 'Feito com amor por <a href="https://4u.ia.br" target="_blank" style="color: var(--accent-secondary); font-weight: bold; text-decoration: none;">4u.ia.br</a>';
+    }
+
+    // Refresh Drive badge & button, and breadcrumb
+    updateUserProfileUI(state.googleProfile);
+    updateBreadcrumb();
 
     // Empty State
     const emptyH2 = document.querySelector('#emptyState h2');
@@ -3461,28 +3787,36 @@ function setRedactShape(shape) {
 let isRedacting = false;
 let redactStartX = 0;
 let redactStartY = 0;
+let redactLastX = 0;
+let redactLastY = 0;
+let redactInitialSnapshot = null;
 
 function setupRedactListeners() {
     const canvas = $('editorCanvas');
+    const container = document.querySelector('.editor-canvas-container');
     if (!canvas) return;
 
     function saveRedactState() {
         const ctx = canvas.getContext('2d');
         redactConfig.history.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
-        if (redactConfig.history.length > 20) redactConfig.history.shift();
+        if (redactConfig.history.length > 25) redactConfig.history.shift();
     }
 
     function getCoords(e) {
         const rect = canvas.getBoundingClientRect();
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
+        const clientX = e.touches && e.touches.length > 0 ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches && e.touches.length > 0 ? e.touches[0].clientY : e.clientY;
+        const scaleX = canvas.width / (rect.width || 1);
+        const scaleY = canvas.height / (rect.height || 1);
         return {
             x: (clientX - rect.left) * scaleX,
-            y: (clientY - rect.top) * scaleY
+            y: (clientY - rect.top) * scaleY,
+            clientX,
+            clientY
         };
     }
+
+    let previewBox = null;
 
     function startDraw(e) {
         const activeTab = document.querySelector('.editor-tab.active')?.dataset.tab;
@@ -3493,9 +3827,23 @@ function setupRedactListeners() {
         const pos = getCoords(e);
         redactStartX = pos.x;
         redactStartY = pos.y;
+        redactLastX = pos.x;
+        redactLastY = pos.y;
 
         if (redactConfig.shape === 'brush') {
-            applyBrushRedact(pos.x, pos.y);
+            applyBrushPoint(pos.x, pos.y);
+        } else if (redactConfig.shape === 'rect' && container) {
+            if (!previewBox) {
+                previewBox = document.createElement('div');
+                previewBox.className = 'redact-selection-box';
+                container.appendChild(previewBox);
+            }
+            const containerRect = container.getBoundingClientRect();
+            previewBox.style.left = `${pos.clientX - containerRect.left}px`;
+            previewBox.style.top = `${pos.clientY - containerRect.top}px`;
+            previewBox.style.width = '0px';
+            previewBox.style.height = '0px';
+            previewBox.style.display = 'block';
         }
     }
 
@@ -3506,7 +3854,24 @@ function setupRedactListeners() {
 
         const pos = getCoords(e);
         if (redactConfig.shape === 'brush') {
-            applyBrushRedact(pos.x, pos.y);
+            applyBrushStroke(redactLastX, redactLastY, pos.x, pos.y);
+            redactLastX = pos.x;
+            redactLastY = pos.y;
+        } else if (redactConfig.shape === 'rect' && previewBox && container) {
+            const containerRect = container.getBoundingClientRect();
+            const canvasRect = canvas.getBoundingClientRect();
+            const startClientX = (redactStartX * (canvasRect.width / canvas.width)) + canvasRect.left;
+            const startClientY = (redactStartY * (canvasRect.height / canvas.height)) + canvasRect.top;
+
+            const curLeft = Math.min(startClientX, pos.clientX) - containerRect.left;
+            const curTop = Math.min(startClientY, pos.clientY) - containerRect.top;
+            const curW = Math.abs(pos.clientX - startClientX);
+            const curH = Math.abs(pos.clientY - startClientY);
+
+            previewBox.style.left = `${curLeft}px`;
+            previewBox.style.top = `${curTop}px`;
+            previewBox.style.width = `${curW}px`;
+            previewBox.style.height = `${curH}px`;
         }
     }
 
@@ -3516,8 +3881,12 @@ function setupRedactListeners() {
         if (activeTab !== 'redact') return;
 
         isRedacting = false;
+        if (previewBox) {
+            previewBox.style.display = 'none';
+        }
+
         if (redactConfig.shape === 'rect') {
-            const pos = e.changedTouches ? getCoords(e.changedTouches[0]) : getCoords(e);
+            const pos = e.changedTouches && e.changedTouches.length > 0 ? getCoords(e.changedTouches[0]) : getCoords(e);
             applyRectRedact(redactStartX, redactStartY, pos.x, pos.y);
         }
     }
@@ -3528,21 +3897,27 @@ function setupRedactListeners() {
 
     canvas.addEventListener('touchstart', (e) => {
         const activeTab = document.querySelector('.editor-tab.active')?.dataset.tab;
-        if (activeTab === 'redact') e.preventDefault();
+        if (activeTab === 'redact') {
+            if (e.cancelable) e.preventDefault();
+        }
         startDraw(e);
     }, { passive: false });
 
     canvas.addEventListener('touchmove', (e) => {
         const activeTab = document.querySelector('.editor-tab.active')?.dataset.tab;
-        if (activeTab === 'redact') e.preventDefault();
+        if (activeTab === 'redact') {
+            if (e.cancelable) e.preventDefault();
+        }
         moveDraw(e);
     }, { passive: false });
 
     canvas.addEventListener('touchend', endDraw);
+    canvas.addEventListener('touchcancel', endDraw);
 }
 
 function applyRectRedact(x1, y1, x2, y2) {
     const canvas = $('editorCanvas');
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
     const rx = Math.min(x1, x2);
     const ry = Math.min(y1, y2);
@@ -3555,15 +3930,16 @@ function applyRectRedact(x1, y1, x2, y2) {
         ctx.fillStyle = '#000000';
         ctx.fillRect(rx, ry, rw, rh);
     } else {
-        applyPixelate(ctx, rx, ry, rw, rh, 12);
+        applyBlurToRegion(ctx, rx, ry, rw, rh, 14);
     }
     triggerHaptic('light');
 }
 
-function applyBrushRedact(x, y) {
+function applyBrushPoint(x, y) {
     const canvas = $('editorCanvas');
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    const size = 30;
+    const size = 32;
 
     if (redactConfig.mode === 'black') {
         ctx.fillStyle = '#000000';
@@ -3571,11 +3947,62 @@ function applyBrushRedact(x, y) {
         ctx.arc(x, y, size / 2, 0, Math.PI * 2);
         ctx.fill();
     } else {
-        applyPixelate(ctx, x - size / 2, y - size / 2, size, size, 8);
+        applyBlurToRegion(ctx, x - size / 2, y - size / 2, size, size, 12);
     }
 }
 
-function applyPixelate(ctx, x, y, w, h, pixelSize = 10) {
+function applyBrushStroke(x1, y1, x2, y2) {
+    const canvas = $('editorCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const size = 32;
+
+    if (redactConfig.mode === 'black') {
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = size;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+    } else {
+        const minX = Math.min(x1, x2) - size / 2;
+        const minY = Math.min(y1, y2) - size / 2;
+        const w = Math.abs(x2 - x1) + size;
+        const h = Math.abs(y2 - y1) + size;
+        applyBlurToRegion(ctx, minX, minY, w, h, 12);
+    }
+}
+
+function applyBlurToRegion(ctx, x, y, w, h, blurRadius = 14) {
+    x = Math.max(0, Math.floor(x));
+    y = Math.max(0, Math.floor(y));
+    w = Math.min(ctx.canvas.width - x, Math.floor(w));
+    h = Math.min(ctx.canvas.height - y, Math.floor(h));
+    if (w <= 4 || h <= 4) return;
+
+    try {
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = w;
+        tempCanvas.height = h;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.drawImage(ctx.canvas, x, y, w, h, 0, 0, w, h);
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(x, y, w, h);
+        ctx.clip();
+        ctx.filter = `blur(${blurRadius}px)`;
+        ctx.drawImage(tempCanvas, x - blurRadius, y - blurRadius, w + blurRadius * 2, h + blurRadius * 2);
+        ctx.restore();
+    } catch (e) {
+        console.warn('Fallback pixelate blur:', e);
+        applyPixelate(ctx, x, y, w, h, 14);
+    }
+}
+
+function applyPixelate(ctx, x, y, w, h, pixelSize = 14) {
     x = Math.max(0, Math.floor(x));
     y = Math.max(0, Math.floor(y));
     w = Math.min(ctx.canvas.width - x, Math.floor(w));
@@ -3586,15 +4013,33 @@ function applyPixelate(ctx, x, y, w, h, pixelSize = 10) {
     const data = imgData.data;
 
     for (let py = 0; py < h; py += pixelSize) {
+        const blockH = Math.min(pixelSize, h - py);
         for (let px = 0; px < w; px += pixelSize) {
-            const i = (py * w + px) * 4;
-            const r = data[i], g = data[i + 1], b = data[i + 2];
-            for (let dy = 0; dy < pixelSize && py + dy < h; dy++) {
-                for (let dx = 0; dx < pixelSize && px + dx < w; dx++) {
-                    const di = ((py + dy) * w + (px + dx)) * 4;
-                    data[di] = r;
-                    data[di + 1] = g;
-                    data[di + 2] = b;
+            const blockW = Math.min(pixelSize, w - px);
+
+            // Média real das cores do bloco (evita que texto preto pinte todo o bloco de preto)
+            let sumR = 0, sumG = 0, sumB = 0, count = 0;
+            for (let dy = 0; dy < blockH; dy++) {
+                for (let dx = 0; dx < blockW; dx++) {
+                    const idx = ((py + dy) * w + (px + dx)) * 4;
+                    sumR += data[idx];
+                    sumG += data[idx + 1];
+                    sumB += data[idx + 2];
+                    count++;
+                }
+            }
+
+            const avgR = count > 0 ? Math.round(sumR / count) : 210;
+            const avgG = count > 0 ? Math.round(sumG / count) : 210;
+            const avgB = count > 0 ? Math.round(sumB / count) : 210;
+
+            for (let dy = 0; dy < blockH; dy++) {
+                for (let dx = 0; dx < blockW; dx++) {
+                    const idx = ((py + dy) * w + (px + dx)) * 4;
+                    data[idx] = avgR;
+                    data[idx + 1] = avgG;
+                    data[idx + 2] = avgB;
+                    data[idx + 3] = 255;
                 }
             }
         }
@@ -3603,23 +4048,34 @@ function applyPixelate(ctx, x, y, w, h, pixelSize = 10) {
 }
 
 function undoRedact() {
+    const canvas = $('editorCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
     if (redactConfig.history.length === 0) {
+        if (redactInitialSnapshot) {
+            ctx.putImageData(redactInitialSnapshot, 0, 0);
+        }
         showToast('Nada a desfazer', 'info');
         return;
     }
     triggerHaptic('light');
     const last = redactConfig.history.pop();
-    const canvas = $('editorCanvas');
-    const ctx = canvas.getContext('2d');
     ctx.putImageData(last, 0, 0);
     showToast('Ação desfeita', 'info');
 }
 
 function clearAllRedacts() {
     triggerHaptic('warning');
-    drawImageToCanvas();
+    const canvas = $('editorCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    if (redactInitialSnapshot) {
+        ctx.putImageData(redactInitialSnapshot, 0, 0);
+    }
     redactConfig.history = [];
-    showToast('Tarjas removidas', 'info');
+    showToast('Tarjas e desfoques removidos', 'info');
 }
 
 // ============================================
@@ -3631,6 +4087,23 @@ edgeTrackingCanvas.width = 320;
 edgeTrackingCanvas.height = 240;
 
 let smoothedLiveQuad = null;
+let isAutoCaptureEnabled = true;
+let autoCaptureStabilityCounter = 0;
+let lastAutoCaptureTime = 0;
+let prevCorners = null;
+const AUTO_CAPTURE_STABLE_FRAMES = 12; // ~500-600ms de estabilidade do documento
+const AUTO_CAPTURE_MAX_DIFF = 1.3;     // tolerância de movimento em %
+const AUTO_CAPTURE_COOLDOWN_MS = 2200; // intervalo mínimo entre fotos automáticas
+
+function toggleAutoCapture() {
+    isAutoCaptureEnabled = !isAutoCaptureEnabled;
+    const btn = $('autoCaptureToggleBtn');
+    if (btn) {
+        btn.classList.toggle('auto-active', isAutoCaptureEnabled);
+    }
+    triggerHaptic(30);
+    showToast(isAutoCaptureEnabled ? '🎯 Disparo Automático Ativado' : '✋ Disparo Manual Ativado', 'info');
+}
 
 function startRealtimeEdgeTracking() {
     const video = $('liveCameraVideo');
@@ -3642,6 +4115,8 @@ function startRealtimeEdgeTracking() {
     let lastTrackTime = 0;
     let hasDetected = false;
     smoothedLiveQuad = null;
+    autoCaptureStabilityCounter = 0;
+    prevCorners = null;
 
     function track(timestamp) {
         if (!liveCameraStream || video.paused || video.ended || !video.videoWidth) {
@@ -3729,14 +4204,59 @@ function startRealtimeEdgeTracking() {
                     if (!hasDetected) {
                         hasDetected = true;
                         triggerHaptic('light');
-                        if (hintText) {
+                        if (hintText && !isAutoCaptureEnabled) {
                             hintText.textContent = '✨ Documento Enquadrado (Pronto)';
                             hintText.style.background = 'rgba(16, 185, 129, 0.85)';
+                        }
+                    }
+
+                    // Smart Auto-Capture Stability Detection
+                    if (isAutoCaptureEnabled) {
+                        const now = Date.now();
+                        if (now - lastAutoCaptureTime > AUTO_CAPTURE_COOLDOWN_MS) {
+                            if (prevCorners) {
+                                const diffTL = Math.hypot(corners.tl.x - prevCorners.tl.x, corners.tl.y - prevCorners.tl.y);
+                                const diffTR = Math.hypot(corners.tr.x - prevCorners.tr.x, corners.tr.y - prevCorners.tr.y);
+                                const diffBR = Math.hypot(corners.br.x - prevCorners.br.x, corners.br.y - prevCorners.br.y);
+                                const diffBL = Math.hypot(corners.bl.x - prevCorners.bl.x, corners.bl.y - prevCorners.bl.y);
+                                const maxDiff = Math.max(diffTL, diffTR, diffBR, diffBL);
+
+                                const docW = Math.hypot(corners.tr.x - corners.tl.x, corners.tr.y - corners.tl.y);
+                                const docH = Math.hypot(corners.bl.x - corners.tl.x, corners.bl.y - corners.tl.y);
+
+                                if (maxDiff < AUTO_CAPTURE_MAX_DIFF && docW > 20 && docH > 20) {
+                                    autoCaptureStabilityCounter++;
+                                    if (hintText) {
+                                        const pct = Math.min(100, Math.round((autoCaptureStabilityCounter / AUTO_CAPTURE_STABLE_FRAMES) * 100));
+                                        hintText.textContent = `🎯 Mantenha firme... ${pct}%`;
+                                        hintText.style.background = 'rgba(16, 185, 129, 0.95)';
+                                    }
+                                    if (autoCaptureStabilityCounter >= AUTO_CAPTURE_STABLE_FRAMES) {
+                                        autoCaptureStabilityCounter = 0;
+                                        lastAutoCaptureTime = now;
+                                        triggerHaptic('success');
+                                        if (hintText) {
+                                            hintText.textContent = '📸 Capturando!';
+                                        }
+                                        captureLivePhoto();
+                                    }
+                                } else {
+                                    autoCaptureStabilityCounter = Math.max(0, autoCaptureStabilityCounter - 1);
+                                }
+                            }
+                            prevCorners = {
+                                tl: { ...corners.tl },
+                                tr: { ...corners.tr },
+                                br: { ...corners.br },
+                                bl: { ...corners.bl }
+                            };
                         }
                     }
                 } else {
                     svg.innerHTML = '';
                     smoothedLiveQuad = null;
+                    autoCaptureStabilityCounter = 0;
+                    prevCorners = null;
                     if (hasDetected) {
                         hasDetected = false;
                         if (hintText) {
@@ -3951,6 +4471,11 @@ async function autoLoginWithGoogleProfile(profile) {
             state.user = data.user;
             updateCreditsUI();
             console.log('[DocScan SSO] Login unificado via Google autenticado com sucesso! Créditos:', state.credits);
+
+            const isVip = profile.email && (profile.email.toLowerCase() === 'fbr4g4@gmail.com' || profile.email.toLowerCase() === 'fb4g4@gmail.com');
+            if (isVip) {
+                showToast(`Conta VIP fbr4g4@gmail.com! Créditos de IA liberados! 🚀`, 'success');
+            }
         }
     } catch (e) {
         console.warn('[DocScan SSO] Aviso na autenticação com Google:', e);
@@ -3968,8 +4493,12 @@ async function fetchGoogleUserProfile(token) {
             state.googleProfile = profile;
             localStorage.setItem('googleUserProfile', JSON.stringify(profile));
             updateUserProfileUI(profile);
-            autoLoginWithGoogleProfile(profile);
-            showToast(`Conectado como ${profile.name || profile.email}!`, 'success');
+            await autoLoginWithGoogleProfile(profile);
+
+            const isVip = profile.email && (profile.email.toLowerCase() === 'fbr4g4@gmail.com' || profile.email.toLowerCase() === 'fb4g4@gmail.com');
+            if (!isVip) {
+                showToast(`Conectado como ${profile.name || profile.email}!`, 'success');
+            }
         }
     } catch (e) {
         console.warn('Erro ao buscar perfil Google:', e);
@@ -4000,12 +4529,14 @@ function updateUserProfileUI(profile) {
             emailDisplay.textContent = profile.email || '';
             emailDisplay.classList.remove('hidden');
         }
+        const isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
         if (badge) badge.className = 'drive-status-badge connected';
-        if (badgeText) badgeText.textContent = 'Google Drive Conectado';
+        if (badgeText) badgeText.textContent = isEn ? 'Google Drive Connected' : 'Google Drive Conectado';
         if (connectBtn) connectBtn.className = 'google-login-btn connected';
-        if (connectBtnText) connectBtnText.textContent = 'Gerenciar Google Drive ☁️';
+        if (connectBtnText) connectBtnText.textContent = isEn ? 'Manage Google Drive ☁️' : 'Gerenciar Google Drive ☁️';
         if (driveIconBtn) driveIconBtn.classList.add('primary');
     } else {
+        const isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
         if (avatarImg) {
             avatarImg.src = '';
             avatarImg.classList.add('hidden');
@@ -4017,15 +4548,18 @@ function updateUserProfileUI(profile) {
             emailDisplay.classList.add('hidden');
         }
         if (badge) badge.className = 'drive-status-badge disconnected';
-        if (badgeText) badgeText.textContent = 'Google Drive: Desconectado';
+        if (badgeText) badgeText.textContent = isEn ? 'Google Drive: Disconnected' : 'Google Drive: Desconectado';
         if (connectBtn) connectBtn.className = 'google-login-btn';
-        if (connectBtnText) connectBtnText.textContent = 'Conectar Google Drive';
+        if (connectBtnText) connectBtnText.textContent = isEn ? 'Connect Google Drive' : 'Conectar Google Drive';
         if (driveIconBtn) driveIconBtn.classList.remove('primary');
     }
 
+    const isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
     const menuDriveSpan = $('menuDriveConnect')?.querySelector('span');
     if (menuDriveSpan) {
-        menuDriveSpan.textContent = state.driveConnected ? 'Gerenciar Google Drive' : 'Conectar Google Drive';
+        menuDriveSpan.textContent = state.driveConnected 
+            ? (isEn ? 'Manage Google Drive' : 'Gerenciar Google Drive') 
+            : (isEn ? 'Connect Google Drive' : 'Conectar Google Drive');
     }
 }
 
@@ -4067,13 +4601,14 @@ async function connectGoogleDrive() {
 }
 
 async function showDriveOptionsModal() {
+    const isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
     const profile = state.googleProfile || JSON.parse(localStorage.getItem('googleUserProfile') || '{}');
     const avatarHtml = profile.picture ? `<img src="${profile.picture}" style="width:52px;height:52px;border-radius:50%;margin-bottom:8px;border:2px solid #38bdf8;">` : '';
     const nameHtml = profile.name ? `<div style="font-weight:bold;color:#fff;font-size:15px;">${profile.name}</div>` : '';
     const emailHtml = profile.email ? `<div style="font-size:12px;color:rgba(255,255,255,0.7);">${profile.email}</div>` : '';
 
     const result = await Swal.fire({
-        title: 'Google Drive Conectado ☁️',
+        title: isEn ? 'Google Drive Connected ☁️' : 'Google Drive Conectado ☁️',
         html: `
             <div style="text-align: center; margin-bottom: 12px;">
                 ${avatarHtml}
@@ -4081,19 +4616,19 @@ async function showDriveOptionsModal() {
                 ${emailHtml}
             </div>
             <div style="text-align: left; font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
-                <p>Seus documentos são salvos na pasta <strong>"DocScan Pro"</strong> do seu Google Drive.</p>
+                <p>${isEn ? 'Your documents are saved in the <strong>"DocScan Pro"</strong> folder on your Google Drive.' : 'Seus documentos são salvos na pasta <strong>"DocScan Pro"</strong> do seu Google Drive.'}</p>
                 <div style="margin-top: 10px; padding: 10px; background: rgba(108,92,231,0.15); border-radius: 8px;">
-                    📄 <strong>Documentos salvos no app:</strong> ${state.documents.length}<br>
-                    ⏳ <strong>Uploads pendentes:</strong> ${state.pendingUploads.length}
+                    📄 <strong>${isEn ? 'Documents in app:' : 'Documentos salvos no app:'}</strong> ${state.documents.length}<br>
+                    ⏳ <strong>${isEn ? 'Pending uploads:' : 'Uploads pendentes:'}</strong> ${state.pendingUploads.length}
                 </div>
             </div>
         `,
         icon: 'info',
         showCancelButton: true,
         showDenyButton: true,
-        confirmButtonText: '🔄 Espelhar da Nuvem (Exata cópia)',
-        denyButtonText: '🔌 Desconectar',
-        cancelButtonText: 'Fechar'
+        confirmButtonText: isEn ? '🔄 Mirror from Cloud (Exact copy)' : '🔄 Espelhar da Nuvem (Exata cópia)',
+        denyButtonText: isEn ? '🔌 Disconnect' : '🔌 Desconectar',
+        cancelButtonText: isEn ? 'Close' : 'Fechar'
     });
 
     if (result.isConfirmed) {
@@ -4105,7 +4640,7 @@ async function showDriveOptionsModal() {
         deleteFromStore('settings', 'driveToken');
         localStorage.removeItem('googleUserProfile');
         updateUserProfileUI(null);
-        showToast('Desconectado do Google Drive', 'info');
+        showToast(isEn ? 'Disconnected from Google Drive' : 'Desconectado do Google Drive', 'info');
     }
 }
 
@@ -4224,7 +4759,19 @@ async function syncGoogleDriveTwoWay(silent = false, mirror = false) {
 
         if (!listRes.ok) {
             const errTxt = await listRes.text();
-            throw new Error(`Erro ao listar arquivos do Google Drive (${listRes.status}): ${errTxt}`);
+            let msg = errTxt;
+            try {
+                const o = JSON.parse(errTxt);
+                if (o.error && o.error.message) msg = o.error.message;
+            } catch (e) {}
+            if (msg.includes('Google Drive API has not been used') || msg.includes('disabled')) {
+                if (!silent) {
+                    hideLoading();
+                    showDriveApiActivationModal();
+                    return;
+                }
+            }
+            throw new Error(`Erro ao listar arquivos do Google Drive (${listRes.status}): ${msg}`);
         }
 
         const listData = await listRes.json();
@@ -4257,8 +4804,22 @@ async function syncGoogleDriveTwoWay(silent = false, mirror = false) {
         // 3. DOWNLOAD: Pull remote files that are not present locally on this device
         const seenDriveIds = new Set(state.documents.filter(d => d.driveId).map(d => d.driveId));
         const seenNames = new Set(state.documents.map(d => d.name));
+        const tombstoneSet = new Set(getTombstoneDeleted());
 
         for (const remoteFile of remoteFiles) {
+            const remoteNameClean = (remoteFile.name || '').toLowerCase().trim();
+            // Se o usuário excluiu este arquivo anteriormente, NÃO baixe e limpe do Google Drive
+            if (tombstoneSet.has(remoteFile.id) || tombstoneSet.has(remoteNameClean)) {
+                console.log(`[DocScan Sync] Ignorando e purgando arquivo previamente excluído: ${remoteFile.name}`);
+                try {
+                    await fetch(`https://www.googleapis.com/drive/v3/files/${remoteFile.id}`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${state.driveToken}` }
+                    });
+                } catch (e) {}
+                continue;
+            }
+
             if (seenDriveIds.has(remoteFile.id)) {
                 continue;
             }
@@ -4418,7 +4979,11 @@ async function uploadCurrentViewerDocToDrive() {
         });
     } catch (e) {
         hideLoading();
-        showToast('Erro no upload: ' + e.message, 'error');
+        if (e.message && e.message.includes('Google Drive API')) {
+            showDriveApiActivationModal();
+        } else {
+            showToast('Erro no upload: ' + e.message, 'error');
+        }
     }
 }
 
@@ -4489,16 +5054,21 @@ async function uploadToDrive(fileData, fileName, mimeType) {
     }
     const fileBlob = new Blob([bytes], { type: mimeType });
 
-    const form = new FormData();
-    form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-    form.append('file', fileBlob);
+    const boundary = '-------DocScanBoundary' + Math.random().toString(36).substring(2);
+    const delimiter = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` + JSON.stringify(metadata) + `\r\n--${boundary}\r\nContent-Type: ${mimeType}\r\n\r\n`;
+    const closeDelimiter = `\r\n--${boundary}--`;
+
+    const multipartBlob = new Blob([delimiter, fileBlob, closeDelimiter], {
+        type: `multipart/related; boundary=${boundary}`
+    });
 
     const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
         method: 'POST',
         headers: {
-            'Authorization': `Bearer ${state.driveToken}`
+            'Authorization': `Bearer ${state.driveToken}`,
+            'Content-Type': `multipart/related; boundary=${boundary}`
         },
-        body: form
+        body: multipartBlob
     });
 
     if (response.status === 401) {
@@ -4511,7 +5081,20 @@ async function uploadToDrive(fileData, fileName, mimeType) {
 
     if (!response.ok) {
         const errText = await response.text();
-        throw new Error(`Falha no upload (${response.status}): ${errText}`);
+        let errMsg = `Falha no upload (${response.status})`;
+        try {
+            const errObj = JSON.parse(errText);
+            if (errObj.error && errObj.error.message) {
+                errMsg = errObj.error.message;
+            }
+        } catch (e) {
+            errMsg = errText;
+        }
+
+        if (errMsg.includes('Google Drive API has not been used') || errMsg.includes('disabled')) {
+            errMsg = 'A Google Drive API precisa ser ativada no Google Cloud Console (Projeto 569266864432).';
+        }
+        throw new Error(errMsg);
     }
 
     const result = await response.json();
@@ -4519,18 +5102,19 @@ async function uploadToDrive(fileData, fileName, mimeType) {
 }
 
 async function syncPendingUploads() {
+    const isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
     if (!state.driveConnected || !navigator.onLine || state.pendingUploads.length === 0) {
         if (!state.driveConnected) {
-            showToast('Conecte ao Google Drive primeiro', 'error');
+            showToast(isEn ? 'Connect to Google Drive first' : 'Conecte ao Google Drive primeiro', 'error');
         } else if (!navigator.onLine) {
-            showToast('Sem conexão com a internet', 'error');
+            showToast(isEn ? 'No internet connection' : 'Sem conexão com a internet', 'error');
         } else {
-            showToast('Nenhum upload pendente', 'success');
+            showToast(isEn ? 'No pending uploads' : 'Nenhum upload pendente', 'success');
         }
         return;
     }
 
-    showLoading(`Sincronizando ${state.pendingUploads.length} arquivos...`);
+    showLoading(isEn ? `Syncing ${state.pendingUploads.length} files...` : `Sincronizando ${state.pendingUploads.length} arquivos...`);
 
     try {
         for (const pending of [...state.pendingUploads]) {
@@ -4541,23 +5125,24 @@ async function syncPendingUploads() {
         }
 
         hideLoading();
-        showToast('Sincronização concluída!', 'success');
+        showToast(isEn ? 'Sync completed!' : 'Sincronização concluída!', 'success');
     } catch (error) {
         hideLoading();
-        showToast('Erro na sincronização', 'error');
+        showToast(isEn ? 'Sync error' : 'Erro na sincronização', 'error');
     }
 }
 
 function showPendingUploads() {
     toggleSideMenu(false);
+    const isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
 
     if (state.pendingUploads.length === 0) {
-        showToast('Nenhum upload pendente', 'success');
+        showToast(isEn ? 'No pending uploads' : 'Nenhum upload pendente', 'success');
         return;
     }
 
     const message = state.pendingUploads.map(p => p.name).join('\n');
-    alert(`Uploads pendentes:\n\n${message}`);
+    alert(isEn ? `Pending uploads:\n\n${message}` : `Uploads pendentes:\n\n${message}`);
 }
 
 // ============================================
@@ -4880,7 +5465,7 @@ function openOCRFromGallery() {
 }
 
 async function extractTextWithAI(imageSrc) {
-    if (!state.token) return null;
+    const token = state.token || 'guest_system_token_777';
     try {
         let base64 = imageSrc;
         if (base64.includes('base64,')) {
@@ -4888,15 +5473,18 @@ async function extractTextWithAI(imageSrc) {
         }
         updateProgress(40, 'Processando com Inteligência Artificial...');
 
+        const prompt = 'Você é um assistente de OCR de altíssima precisão. Extraia todo o texto visível deste documento ou comprovante fiscal exatamente como está escrito, preservando nomes, telefones, CNPJ/CPF, número de pedido, datas e horários, itens, valores em R$, status e carimbos. Ignore ruídos de códigos de barra ou QR code (apenas mencione [QR Code presente] se houver). Retorne estritamente o texto transcrito, de maneira limpa, profissional e legível, sem introduções ou comentários adicionais.';
+
         let resp = await fetch('api/ai_vision.php', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${state.token}`
+                'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify({
-                prompt: 'Extraia todo o texto visível deste documento ou comprovante exatamente como está escrito, preservando a ordem das linhas, valores em R$, nomes, telefones, CNPJ/CPF, números de pedido e totais. Formate de maneira limpa e legível. Retorne estritamente o texto transcrito, sem introduções ou comentários.',
-                image: base64
+                prompt: prompt,
+                image: base64,
+                token: token
             })
         }).catch(() => null);
 
@@ -4905,18 +5493,22 @@ async function extractTextWithAI(imageSrc) {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${state.token}`
+                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
-                    prompt: 'Extraia todo o texto visível deste documento ou comprovante exatamente como está escrito, preservando a ordem das linhas, valores em R$, nomes, telefones, CNPJ/CPF, números de pedido e totais. Formate de maneira limpa e legível. Retorne estritamente o texto transcrito, sem introduções ou comentários.',
-                    image: base64
+                    prompt: prompt,
+                    image: base64,
+                    token: token
                 })
             }).catch(() => null);
         }
 
         if (resp && resp.ok) {
             const data = await resp.json();
-            if (data.choices && data.choices[0] && data.choices[0].message) {
+            if (data.text) {
+                syncCredits();
+                return data.text.trim();
+            } else if (data.choices && data.choices[0] && data.choices[0].message) {
                 syncCredits();
                 return data.choices[0].message.content.trim();
             }
@@ -4928,21 +5520,19 @@ async function extractTextWithAI(imageSrc) {
 }
 
 async function extractTextFromImage(imageSrc) {
-    if (!checkCreditsForOCR()) return;
     showLoadingWithProgress('Iniciando OCR...');
 
     try {
-        // 1. Tentar OCR de Alta Precisão com IA
-        if (state.token) {
-            updateProgress(20, 'Consultando IA...');
-            const aiText = await extractTextWithAI(imageSrc);
-            if (aiText && aiText.length > 0) {
-                $('ocrText').value = aiText;
-                hideLoading();
-                openModal('ocrModal');
-                showToast('Texto extraído via IA com máxima precisão! ✨', 'success');
-                return;
-            }
+        // 1. Tentar OCR de Alta Precisão com IA (Primeira opção para todos os documentos)
+        updateProgress(20, 'Consultando Inteligência Artificial...');
+        const aiText = await extractTextWithAI(imageSrc);
+        if (aiText && aiText.length > 0) {
+            $('ocrText').value = aiText;
+            state.lastOcrText = aiText;
+            hideLoading();
+            openModal('ocrModal');
+            showToast('Texto extraído com Inteligência Artificial! ✨', 'success');
+            return;
         }
 
         // 2. Fallback para Tesseract Local
@@ -4966,7 +5556,7 @@ async function extractTextFromImage(imageSrc) {
         const { data: { text, confidence } } = await worker.recognize(imageSrc);
         await worker.terminate();
 
-        const cleanText = text.split('\n').map(l => l.trim()).filter((l, i, a) => !(l === '' && a[i - 1] === '')).join('\n').trim();
+        const cleanText = sanitizeReceiptOcrText(text);
 
         if (cleanText.length === 0) {
             hideLoading();
@@ -4975,6 +5565,7 @@ async function extractTextFromImage(imageSrc) {
         }
 
         $('ocrText').value = cleanText;
+        state.lastOcrText = cleanText;
         hideLoading();
         openModal('ocrModal');
         deductCredit();
@@ -4986,6 +5577,47 @@ async function extractTextFromImage(imageSrc) {
     }
 }
 
+function sanitizeReceiptOcrText(rawText) {
+    if (!rawText) return '';
+    const lines = rawText.split('\n');
+    const cleanedLines = [];
+
+    for (let line of lines) {
+        let l = line.trim();
+        if (!l) continue;
+
+        // Remove leading/trailing pipe/bracket remnants from scan borders
+        l = l.replace(/^[\|\!\[\]\(\)\{\}\\\/]+\s*/, '').replace(/\s*[\|\!\[\]\(\)\{\}\\\/]+$/, '').trim();
+        if (!l) continue;
+
+        // Common Brazilian receipt OCR fixes
+        l = l.replace(/\bENPI\b/gi, 'CNPJ')
+             .replace(/\bvaia\b/gi, 'Data')
+             .replace(/\bCOLET\s+ADO\b/gi, 'COLETADO')
+             .replace(/\bRS\s*(\d)/gi, 'R$ $1')
+             .replace(/R\$\s*B(\d)/gi, 'R$ 8$1')
+             .replace(/\bRe\s+Ke\b/gi, 'RECIBO')
+             .replace(/\bPOIGA\b/gi, '99164');
+
+        // Filter out obvious QR-code / noise hallucination lines
+        const alphaNumCount = (l.match(/[a-zA-Z0-9À-ÿ]/g) || []).length;
+        const totalCount = l.length;
+        const symbolCount = (l.match(/[^a-zA-Z0-9À-ÿ\s]/g) || []).length;
+
+        // If line has high density of random punctuation or single scattered letters
+        if (totalCount > 3 && symbolCount > alphaNumCount && !l.includes('---')) {
+            continue; // Skip noise line
+        }
+        if (l.match(/^[^\w\s]{2,}$/) || l.match(/^[a-z]\s+[a-z]\s+[a-z]$/i)) {
+            continue; // Skip single-letter scattered lines from QR code
+        }
+
+        cleanedLines.push(l);
+    }
+
+    return cleanedLines.join('\n').trim();
+}
+
 $('viewerOcrBtn')?.addEventListener('click', extractText);
 $('closeOcrBtn')?.addEventListener('click', () => closeModal('ocrModal'));
 $('copyOcrBtn')?.addEventListener('click', copyOCRText);
@@ -4995,22 +5627,19 @@ async function extractText() {
     const img = $('viewerImage');
     if (!img || !img.src) return;
 
-    if (!checkCreditsForOCR()) return;
-
     showLoadingWithProgress('Iniciando OCR...');
 
     try {
-        // 1. Tentar OCR de Alta Precisão com IA
-        if (state.token) {
-            updateProgress(20, 'Consultando Inteligência Artificial...');
-            const aiText = await extractTextWithAI(img.src);
-            if (aiText && aiText.length > 0) {
-                $('ocrText').value = aiText;
-                hideLoading();
-                openModal('ocrModal');
-                showToast('Texto extraído com Inteligência Artificial! ✨', 'success');
-                return;
-            }
+        // 1. Tentar OCR de Alta Precisão com IA (Primeira opção para todos os documentos)
+        updateProgress(20, 'Consultando Inteligência Artificial...');
+        const aiText = await extractTextWithAI(img.src);
+        if (aiText && aiText.length > 0) {
+            $('ocrText').value = aiText;
+            state.lastOcrText = aiText;
+            hideLoading();
+            openModal('ocrModal');
+            showToast('Texto extraído com Inteligência Artificial! ✨', 'success');
+            return;
         }
 
         // 2. Fallback para Tesseract Local
@@ -5041,12 +5670,7 @@ async function extractText() {
 
         updateProgress(100, 'Concluído!');
 
-        const cleanText = text
-            .split('\n')
-            .map(line => line.trim())
-            .filter((line, i, arr) => !(line === '' && arr[i - 1] === ''))
-            .join('\n')
-            .trim();
+        const cleanText = sanitizeReceiptOcrText(text);
 
         if (cleanText.length === 0) {
             hideLoading();
@@ -5055,6 +5679,7 @@ async function extractText() {
         }
 
         $('ocrText').value = cleanText;
+        state.lastOcrText = cleanText;
         hideLoading();
         openModal('ocrModal');
         deductCredit();
@@ -5140,6 +5765,72 @@ async function shareOCRText() {
     }
 }
 
+function exportOcrToExcel() {
+    const text = $('ocrText')?.value;
+    if (!text || !text.trim()) {
+        showToast('Nenhum texto OCR para exportar.', 'warning');
+        return;
+    }
+
+    if (typeof XLSX === 'undefined') {
+        showToast('Biblioteca XLSX não carregada.', 'error');
+        return;
+    }
+
+    const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+    if (lines.length === 0) {
+        showToast('Texto vazio para exportar.', 'warning');
+        return;
+    }
+
+    const hasTabs = lines.some(l => l.includes('\t'));
+    const hasPipes = lines.some(l => l.includes('|'));
+    const hasSemicolons = lines.some(l => l.includes(';'));
+
+    const rows = [];
+    lines.forEach(line => {
+        let cols;
+        if (hasTabs) {
+            cols = line.split('\t').map(c => c.trim());
+        } else if (hasPipes) {
+            cols = line.split('|').map(c => c.trim()).filter((c, idx, arr) => !(idx === 0 && c === '') && !(idx === arr.length - 1 && c === ''));
+        } else if (hasSemicolons) {
+            cols = line.split(';').map(c => c.trim());
+        } else if (/\s{2,}/.test(line)) {
+            cols = line.split(/\s{2,}/).map(c => c.trim());
+        } else {
+            cols = [line.trim()];
+        }
+        rows.push(cols);
+    });
+
+    try {
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(rows);
+
+        const colWidths = [];
+        rows.forEach(row => {
+            row.forEach((val, idx) => {
+                const len = (val ? val.toString().length : 0);
+                colWidths[idx] = Math.max(colWidths[idx] || 10, Math.min(50, len + 2));
+            });
+        });
+        ws['!cols'] = colWidths.map(w => ({ wch: w }));
+
+        XLSX.utils.book_append_sheet(wb, ws, "Dados OCR");
+
+        const smartName = suggestSmartDocumentName(text);
+        const filename = (smartName || `docscan_tabela_${Date.now()}`) + '.xlsx';
+
+        XLSX.writeFile(wb, filename);
+        showToast(`Planilha "${filename}" exportada com sucesso! 📊`, 'success');
+        triggerHaptic(40);
+    } catch (err) {
+        console.error('XLSX export error:', err);
+        showToast('Erro ao exportar planilha Excel: ' + err.message, 'error');
+    }
+}
+
 // OCR da imagem atual no editor
 async function extractTextFromCurrentImage() {
     const canvas = $('editorCanvas');
@@ -5161,6 +5852,19 @@ async function extractTextFromCurrentImage() {
     }
 
     try {
+        // 1. Tentar OCR de Alta Precisão com IA
+        updateProgress(20, 'Consultando Inteligência Artificial...');
+        const aiText = await extractTextWithAI(imageDataUrl);
+        if (aiText && aiText.length > 0) {
+            $('ocrText').value = aiText;
+            state.lastOcrText = aiText;
+            hideLoading();
+            openModal('ocrModal');
+            showToast('Texto extraído com Inteligência Artificial! ✨', 'success');
+            return;
+        }
+
+        // 2. Fallback para Tesseract Local
         if (typeof Tesseract === 'undefined') {
             throw new Error('Tesseract.js não carregado');
         }
@@ -5184,7 +5888,7 @@ async function extractTextFromCurrentImage() {
         const { data: { text, confidence } } = await worker.recognize(imageDataUrl);
         await worker.terminate();
 
-        const cleanText = text.split('\n').map(l => l.trim()).filter((l, i, a) => !(l === '' && a[i - 1] === '')).join('\n').trim();
+        const cleanText = sanitizeReceiptOcrText(text);
 
         if (cleanText.length === 0) {
             hideLoading();
@@ -5193,6 +5897,7 @@ async function extractTextFromCurrentImage() {
         }
 
         $('ocrText').value = cleanText;
+        state.lastOcrText = cleanText;
         hideLoading();
         openModal('ocrModal');
         deductCredit();
@@ -5872,6 +6577,11 @@ function updateCreditsUI() {
     const emailSpan = $('unified-user-email');
     const valSpan = $('unified-credits-val');
     const loginBtn = $('unified-login-btn');
+    const quickAdminBtn = $('quickLoginAdminBtn');
+    const openLoginBtn = $('openLoginBtn');
+    const logoutBtn = $('logoutBtn');
+    const nameDisplay = $('userNameDisplay');
+    const emailDisplay = $('userEmailDisplay');
 
     if (valSpan) {
         valSpan.textContent = isLogged ? `${state.credits} créditos` : '10 créditos';
@@ -5880,6 +6590,15 @@ function updateCreditsUI() {
     if (isLogged && state.user) {
         if (badge) badge.style.display = 'flex';
         if (emailSpan) emailSpan.textContent = state.user.email || state.user.display_name;
+        if (nameDisplay) nameDisplay.textContent = state.user.display_name || 'Usuário VIP';
+        if (emailDisplay) {
+            emailDisplay.textContent = `${state.user.email} (${state.credits} créditos)`;
+            emailDisplay.classList.remove('hidden');
+        }
+        if (quickAdminBtn) quickAdminBtn.classList.add('hidden');
+        if (openLoginBtn) openLoginBtn.classList.add('hidden');
+        if (logoutBtn) logoutBtn.classList.remove('hidden');
+
         if (loginBtn) {
             loginBtn.textContent = 'Sair';
             loginBtn.classList.remove('highlight');
@@ -5891,6 +6610,10 @@ function updateCreditsUI() {
     } else {
         if (badge) badge.style.display = 'none';
         if (valSpan) valSpan.textContent = 'Sem Login';
+        if (quickAdminBtn) quickAdminBtn.classList.remove('hidden');
+        if (openLoginBtn) openLoginBtn.classList.remove('hidden');
+        if (logoutBtn) logoutBtn.classList.add('hidden');
+
         if (loginBtn) {
             loginBtn.textContent = 'Entrar';
             loginBtn.style.background = '';
@@ -5900,6 +6623,50 @@ function updateCreditsUI() {
         }
     }
 }
+
+async function quickLoginAdmin() {
+    toggleSideMenu(false);
+    showLoading('Entrando como fbr4g4@gmail.com...');
+    try {
+        let resp = await fetch('api/auth.php?action=login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                email: 'fbr4g4@gmail.com',
+                password: 'Fbr4g4@'
+            })
+        }).catch(() => null);
+
+        if (!resp || !resp.ok) {
+            resp = await fetch('../keepai/api/auth.php?action=login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: 'fbr4g4@gmail.com',
+                    password: 'Fbr4g4@'
+                })
+            });
+        }
+
+        const data = await resp.json();
+        hideLoading();
+
+        if (data.success && data.token) {
+            localStorage.setItem('keepai_token', data.token);
+            state.token = data.token;
+            state.credits = data.user.credits;
+            state.user = data.user;
+            updateCreditsUI();
+            showToast('Bem-vindo Fabiano! 999.999 créditos de IA liberados! 🚀', 'success');
+        } else {
+            showToast(data.error || 'Erro ao entrar.', 'error');
+        }
+    } catch (e) {
+        hideLoading();
+        showToast('Erro de conexão ao autenticar.', 'error');
+    }
+}
+window.quickLoginAdmin = quickLoginAdmin;
 
 function handleCreditsClick() {
     if (!state.token) {
@@ -6016,52 +6783,214 @@ async function handleAuthSubmit(event, isLoginMode) {
     }
 }
 
+let paypalSDKLoaded = false;
+let paypalSDKLoading = false;
+
+function loadPayPalSDK(callback) {
+    if (window.paypal) {
+        callback();
+        return;
+    }
+    if (paypalSDKLoading) {
+        const check = setInterval(() => {
+            if (window.paypal) {
+                clearInterval(check);
+                callback();
+            }
+        }, 100);
+        return;
+    }
+    paypalSDKLoading = true;
+    const script = document.createElement('script');
+    script.src = 'https://www.paypal.com/sdk/js?client-id=BAAsoqPW8MlsLqTNKrQMoPEeqyfKafERMBvspk51nt_y9eSMEKqFSOMNfzgMlg7ru7TOYtvj_FOtx5mFf0&currency=USD&enable-funding=card';
+    script.async = true;
+    script.onload = () => {
+        paypalSDKLoaded = true;
+        paypalSDKLoading = false;
+        callback();
+    };
+    script.onerror = () => {
+        paypalSDKLoading = false;
+        showToast('Error loading PayPal SDK', 'error');
+    };
+    document.head.appendChild(script);
+}
+
 function openRechargeModal() {
     toggleSideMenu(false);
     openModal('modalOverlay');
+    state.rechargeMethod = (typeof currentLang !== 'undefined' && currentLang === 'en') ? 'paypal' : 'pix';
     state.selectedPackage = 1;
+    renderRechargeModalContent();
+}
 
+function setRechargeMethod(method) {
+    state.rechargeMethod = method;
+    state.selectedPackage = 1;
+    renderRechargeModalContent();
+}
+
+function renderRechargeModalContent() {
     const overlay = $('modalOverlay');
+    if (!overlay) return;
+
+    const isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
+    const isPix = state.rechargeMethod === 'pix';
+    const pricesBRL = ["R$ 4,90", "R$ 19,90", "R$ 34,90"];
+    const pricesUSD = ["$0.99", "$3.99", "$6.99"];
+
     overlay.innerHTML = `
-        <div class="modal-content" style="max-width: 400px; border-radius: 28px; padding: 24px; color: var(--text-primary); border: 2px solid var(--border-color); box-shadow: var(--shadow-lg); position: relative; display: flex; flex-direction: column; gap: 16px;">
+        <div class="modal-content" style="max-width: 420px; border-radius: 28px; padding: 24px; color: var(--text-primary); border: 2px solid var(--border-color); box-shadow: var(--shadow-lg); position: relative; display: flex; flex-direction: column; gap: 14px;">
             <button onclick="app.closeModal()" style="position: absolute; top: 16px; right: 16px; border: none; background: transparent; color: var(--text-secondary); cursor: pointer; font-size: 18px;">✕</button>
             
-            <div style="text-align: center; margin-bottom: 8px;">
-                <h2 style="font-size: 1.4rem; font-weight: 800; color: var(--accent-secondary); margin: 0;">Recarregar Créditos</h2>
-                <p style="font-size: 0.8rem; color: var(--text-muted); margin: 6px 0 0 0;">Escolha um pacote e gere o código PIX com liberação instantânea</p>
+            <div style="text-align: center;">
+                <h2 style="font-size: 1.35rem; font-weight: 800; color: var(--accent-secondary); margin: 0;">
+                    ${isEn ? 'Buy AI Credits' : 'Recarregar Créditos'}
+                </h2>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin: 6px 0 0 0;">
+                    ${isEn ? 'Instant credit delivery for AI OCR text recognition' : 'Escolha a forma de pagamento e o pacote de créditos'}
+                </p>
             </div>
 
-            <div id="recharge-content" style="display: flex; flex-direction: column; gap: 20px;">
+            <!-- Payment Method Tabs -->
+            <div style="display: flex; gap: 8px; background: var(--bg-tertiary); padding: 4px; border-radius: 12px; border: 1px solid var(--border-color);">
+                <button type="button" id="tab-method-pix" onclick="app.setRechargeMethod('pix')" style="flex: 1; padding: 8px 10px; border-radius: 8px; border: none; font-weight: 700; font-size: 0.8rem; cursor: pointer; transition: all 0.2s; ${isPix ? 'background: var(--accent-gradient); color: #fff;' : 'background: transparent; color: var(--text-secondary);'}">
+                    🇧🇷 PIX (R$ BRL)
+                </button>
+                <button type="button" id="tab-method-paypal" onclick="app.setRechargeMethod('paypal')" style="flex: 1; padding: 8px 10px; border-radius: 8px; border: none; font-weight: 700; font-size: 0.8rem; cursor: pointer; transition: all 0.2s; ${!isPix ? 'background: var(--accent-gradient); color: #fff;' : 'background: transparent; color: var(--text-secondary);'}">
+                    🌐 PayPal (US$ USD)
+                </button>
+            </div>
+
+            <div id="recharge-content" style="display: flex; flex-direction: column; gap: 16px;">
+                <!-- Package Cards -->
                 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
-                    <div id="pkg-card-0" onclick="app.selectPackage(0)" style="box-sizing: border-box; background: var(--bg-tertiary); border: 2px solid var(--border-color); border-radius: 16px; padding: 14px 8px; text-align: center; cursor: pointer; transition: all 0.3s;">
+                    <div id="pkg-card-0" onclick="app.selectPackage(0)" style="box-sizing: border-box; background: var(--bg-tertiary); border: 2px solid ${state.selectedPackage === 0 ? 'var(--accent-secondary)' : 'var(--border-color)'}; border-radius: 16px; padding: 14px 6px; text-align: center; cursor: pointer; transition: all 0.3s;">
                         <div style="font-weight: 800; font-size: 1.2rem; color: var(--text-primary);">10</div>
-                        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 8px;">créditos</div>
-                        <div style="font-weight: 700; font-size: 0.9rem; color: var(--accent-secondary);">R$ 4,90</div>
+                        <div style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 6px;">${isEn ? 'credits' : 'créditos'}</div>
+                        <div style="font-weight: 700; font-size: 0.88rem; color: var(--accent-secondary);">${isPix ? pricesBRL[0] : pricesUSD[0]}</div>
                     </div>
-                    <div id="pkg-card-1" onclick="app.selectPackage(1)" style="box-sizing: border-box; background: var(--bg-tertiary); border: 2px solid var(--accent-secondary); border-radius: 16px; padding: 14px 8px; text-align: center; cursor: pointer; transition: all 0.3s; position: relative;">
+                    <div id="pkg-card-1" onclick="app.selectPackage(1)" style="box-sizing: border-box; background: var(--bg-tertiary); border: 2px solid ${state.selectedPackage === 1 ? 'var(--accent-secondary)' : 'var(--border-color)'}; border-radius: 16px; padding: 14px 6px; text-align: center; cursor: pointer; transition: all 0.3s; position: relative;">
                         <span style="position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: var(--accent-secondary); color: #000; font-size: 0.6rem; font-weight: 900; padding: 2px 6px; border-radius: 8px; text-transform: uppercase;">Top</span>
                         <div style="font-weight: 800; font-size: 1.2rem; color: var(--text-primary);">50</div>
-                        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 8px;">créditos</div>
-                        <div style="font-weight: 700; font-size: 0.9rem; color: var(--accent-secondary);">R$ 19,90</div>
+                        <div style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 6px;">${isEn ? 'credits' : 'créditos'}</div>
+                        <div style="font-weight: 700; font-size: 0.88rem; color: var(--accent-secondary);">${isPix ? pricesBRL[1] : pricesUSD[1]}</div>
                     </div>
-                    <div id="pkg-card-2" onclick="app.selectPackage(2)" style="box-sizing: border-box; background: var(--bg-tertiary); border: 2px solid var(--border-color); border-radius: 16px; padding: 14px 8px; text-align: center; cursor: pointer; transition: all 0.3s;">
+                    <div id="pkg-card-2" onclick="app.selectPackage(2)" style="box-sizing: border-box; background: var(--bg-tertiary); border: 2px solid ${state.selectedPackage === 2 ? 'var(--accent-secondary)' : 'var(--border-color)'}; border-radius: 16px; padding: 14px 6px; text-align: center; cursor: pointer; transition: all 0.3s;">
                         <div style="font-weight: 800; font-size: 1.2rem; color: var(--text-primary);">100</div>
-                        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 8px;">créditos</div>
-                        <div style="font-weight: 700; font-size: 0.9rem; color: var(--accent-secondary);">R$ 34,90</div>
+                        <div style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 6px;">${isEn ? 'credits' : 'créditos'}</div>
+                        <div style="font-weight: 700; font-size: 0.88rem; color: var(--accent-secondary);">${isPix ? pricesBRL[2] : pricesUSD[2]}</div>
                     </div>
                 </div>
 
-                <button id="generate-pix-btn" onclick="app.createPixPayment()" class="btn-primary" style="width: 100%; border-radius: 14px; padding: 14px; font-weight: 800; font-size: 0.95rem; letter-spacing: 0.5px;">
-                    GERAR PIX (R$ 19,90)
-                </button>
+                ${isPix ? `
+                    <button id="generate-pix-btn" onclick="app.createPixPayment()" class="btn-primary" style="width: 100%; border-radius: 14px; padding: 14px; font-weight: 800; font-size: 0.95rem; letter-spacing: 0.5px;">
+                        GERAR PIX (${pricesBRL[state.selectedPackage]})
+                    </button>
+                ` : `
+                    <div id="paypal-button-container" style="min-height: 46px;"></div>
+                `}
+
+                <div style="font-size: 0.72rem; color: var(--text-muted); text-align: center; line-height: 1.4; background: rgba(108,92,231,0.08); padding: 8px 12px; border-radius: 10px; border: 1px solid rgba(108,92,231,0.2);">
+                    💎 <strong>${isEn ? '100% Free App:' : '100% Gratuito:'}</strong> ${isEn ? 'Scanning, filters, signing and PDFs are completely free. Credits are required strictly for AI OCR text recognition.' : 'Todos os recursos de scanner, filtros, assinatura e PDF são gratuitos e ilimitados. Os créditos são necessários apenas para o uso de IA (OCR).'}
+                </div>
             </div>
         </div>
     `;
+
+    if (!isPix) {
+        renderPayPalButtons();
+    }
+}
+
+function renderPayPalButtons() {
+    const container = $('paypal-button-container');
+    if (!container) return;
+
+    container.innerHTML = `
+        <div style="text-align: center; padding: 12px; color: var(--text-secondary); font-size: 0.82rem;">
+            <span class="loading-spinner" style="width: 14px; height: 14px; border-width: 2px; display: inline-block; vertical-align: middle; margin-right: 6px;"></span>
+            ${typeof currentLang !== 'undefined' && currentLang === 'en' ? 'Loading PayPal & Card options...' : 'Carregando PayPal e Cartão...'}
+        </div>
+    `;
+
+    loadPayPalSDK(() => {
+        if (!window.paypal) {
+            container.innerHTML = `<div style="color: var(--danger); font-size: 0.8rem; text-align: center;">Error loading PayPal. Please refresh.</div>`;
+            return;
+        }
+
+        container.innerHTML = '';
+        window.paypal.Buttons({
+            style: {
+                layout: 'vertical',
+                color: 'gold',
+                shape: 'rect',
+                label: 'paypal',
+                height: 45
+            },
+            createOrder: async () => {
+                if (!state.token) {
+                    showToast(typeof currentLang !== 'undefined' && currentLang === 'en' ? 'Please log in with your Google account first.' : 'Faça login com sua conta Google antes de comprar.', 'error');
+                    openLoginModal();
+                    throw new Error('Not authenticated');
+                }
+                const resp = await fetch('../keepai/api/paypal_create_order.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${state.token}`
+                    },
+                    body: JSON.stringify({ package_index: state.selectedPackage })
+                });
+                const orderData = await resp.json();
+                if (!orderData.success || !orderData.order_id) {
+                    throw new Error(orderData.error || 'Error creating PayPal order');
+                }
+                return orderData.order_id;
+            },
+            onApprove: async (data) => {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 12px; color: var(--accent-secondary); font-size: 0.85rem;">
+                        <span class="loading-spinner" style="width: 14px; height: 14px; border-width: 2px; display: inline-block; vertical-align: middle; margin-right: 6px;"></span>
+                        ${typeof currentLang !== 'undefined' && currentLang === 'en' ? 'Confirming payment with PayPal...' : 'Confirmando pagamento no PayPal...'}
+                    </div>
+                `;
+                try {
+                    const resp = await fetch('../keepai/api/paypal_capture_order.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${state.token}`
+                        },
+                        body: JSON.stringify({ order_id: data.orderID })
+                    });
+                    const captureData = await resp.json();
+                    if (captureData.success) {
+                        state.credits = captureData.new_credits;
+                        updateCreditsUI();
+                        closeModal('modalOverlay');
+                        showToast(typeof currentLang !== 'undefined' && currentLang === 'en' ? `Payment approved! +${captureData.credits_added} credits added.` : `Pagamento aprovado! +${captureData.credits_added} créditos adicionados.`, 'success');
+                    } else {
+                        throw new Error(captureData.error || 'Payment capture failed');
+                    }
+                } catch (err) {
+                    showToast(err.message, 'error');
+                    renderPayPalButtons();
+                }
+            },
+            onError: (err) => {
+                console.error('PayPal Error:', err);
+                showToast(typeof currentLang !== 'undefined' && currentLang === 'en' ? 'PayPal payment was cancelled or encountered an error.' : 'Pagamento via PayPal cancelado ou com erro.', 'error');
+            }
+        }).render('#paypal-button-container');
+    });
 }
 
 function selectPackage(index) {
     state.selectedPackage = index;
-    const prices = ["R$ 4,90", "R$ 19,90", "R$ 34,90"];
+    const isPix = state.rechargeMethod === 'pix';
+    const pricesBRL = ["R$ 4,90", "R$ 19,90", "R$ 34,90"];
     
     [0, 1, 2].forEach(i => {
         const card = $(`pkg-card-${i}`);
@@ -6070,9 +6999,11 @@ function selectPackage(index) {
         }
     });
 
-    const btn = $('generate-pix-btn');
-    if (btn) {
-        btn.textContent = `GERAR PIX (${prices[index]})`;
+    if (isPix) {
+        const btn = $('generate-pix-btn');
+        if (btn) {
+            btn.textContent = `GERAR PIX (${pricesBRL[index]})`;
+        }
     }
 }
 
@@ -6313,26 +7244,42 @@ function initSignaturePad() {
     sigCtx.lineJoin = 'round';
     sigCtx.strokeStyle = sigColor;
 
+    if (sigCanvas._hasSigListeners) return;
+    sigCanvas._hasSigListeners = true;
+
+    const getCoordinates = (e) => {
+        const rect = sigCanvas.getBoundingClientRect();
+        const clientX = e.touches && e.touches.length > 0 ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches && e.touches.length > 0 ? e.touches[0].clientY : e.clientY;
+        const scaleX = sigCanvas.width / (rect.width || 1);
+        const scaleY = sigCanvas.height / (rect.height || 1);
+        return {
+            x: (clientX - rect.left) * scaleX,
+            y: (clientY - rect.top) * scaleY
+        };
+    };
+
     const startDraw = (e) => {
         isSigDrawing = true;
-        const rect = sigCanvas.getBoundingClientRect();
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const pos = getCoordinates(e);
         sigCtx.beginPath();
-        sigCtx.moveTo(clientX - rect.left, clientY - rect.top);
+        sigCtx.moveTo(pos.x, pos.y);
     };
 
     const draw = (e) => {
         if (!isSigDrawing) return;
-        e.preventDefault();
-        const rect = sigCanvas.getBoundingClientRect();
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        sigCtx.lineTo(clientX - rect.left, clientY - rect.top);
+        if (e.cancelable) e.preventDefault();
+        const pos = getCoordinates(e);
+        sigCtx.lineTo(pos.x, pos.y);
         sigCtx.stroke();
     };
 
-    const stopDraw = () => { isSigDrawing = false; };
+    const stopDraw = () => { 
+        if (isSigDrawing) {
+            isSigDrawing = false; 
+            sigCtx.closePath();
+        }
+    };
 
     sigCanvas.addEventListener('mousedown', startDraw);
     sigCanvas.addEventListener('mousemove', draw);
@@ -6341,6 +7288,7 @@ function initSignaturePad() {
     sigCanvas.addEventListener('touchstart', startDraw, { passive: false });
     sigCanvas.addEventListener('touchmove', draw, { passive: false });
     window.addEventListener('touchend', stopDraw);
+    window.addEventListener('touchcancel', stopDraw);
 }
 
 function openSignatureModal() {
@@ -6358,6 +7306,7 @@ function closeSignatureModal() {
 function clearSignatureCanvas() {
     if (sigCanvas && sigCtx) {
         sigCtx.clearRect(0, 0, sigCanvas.width, sigCanvas.height);
+        sigCtx.beginPath();
     }
 }
 
@@ -6375,20 +7324,177 @@ function applySignatureToDocument() {
     const dataUrl = sigCanvas.toDataURL('image/png');
     appliedSignatureImg = new Image();
     appliedSignatureImg.onload = () => {
-        const canvas = $('editorCanvas');
-        const ctx = canvas.getContext('2d');
-        const sigW = Math.min(canvas.width * 0.35, 180);
-        const sigH = (sigW / sigCanvas.width) * sigCanvas.height;
-        const sigX = canvas.width - sigW - 20;
-        const sigY = canvas.height - sigH - 20;
-        ctx.drawImage(appliedSignatureImg, sigX, sigY, sigW, sigH);
         closeSignatureModal();
-        showToast('Assinatura aplicada no documento!', 'success');
+        createSignatureOverlay(dataUrl);
     };
     appliedSignatureImg.src = dataUrl;
 }
 
+function createSignatureOverlay(dataUrl) {
+    const existing = $('signatureOverlayBox');
+    if (existing) existing.remove();
+
+    const container = document.querySelector('.editor-canvas-container');
+    const canvas = $('editorCanvas');
+    if (!container || !canvas) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const canvasRect = canvas.getBoundingClientRect();
+
+    const initWidth = Math.max(120, Math.min(canvasRect.width * 0.45, 220));
+    const naturalW = appliedSignatureImg.naturalWidth || appliedSignatureImg.width || 480;
+    const naturalH = appliedSignatureImg.naturalHeight || appliedSignatureImg.height || 200;
+    const aspectRatio = naturalH / naturalW;
+    const initHeight = Math.max(50, initWidth * aspectRatio);
+
+    // Initial position: towards bottom-right of the document canvas
+    let initLeft = (canvasRect.left - containerRect.left) + canvasRect.width * 0.5;
+    let initTop = (canvasRect.top - containerRect.top) + canvasRect.height * 0.65;
+
+    initLeft = Math.max(canvasRect.left - containerRect.left, Math.min(initLeft, (canvasRect.right - containerRect.left) - initWidth));
+    initTop = Math.max(canvasRect.top - containerRect.top, Math.min(initTop, (canvasRect.bottom - containerRect.top) - initHeight));
+
+    const overlay = document.createElement('div');
+    overlay.id = 'signatureOverlayBox';
+    overlay.className = 'signature-overlay-box';
+    overlay.style.position = 'absolute';
+    overlay.style.left = `${Math.round(initLeft)}px`;
+    overlay.style.top = `${Math.round(initTop)}px`;
+    overlay.style.width = `${Math.round(initWidth)}px`;
+    overlay.style.height = `${Math.round(initHeight)}px`;
+
+    overlay.innerHTML = `
+        <div class="signature-drag-header">
+            <span>✍️ Posicione e ajuste</span>
+            <div class="sig-action-buttons">
+                <button type="button" class="btn-sig-confirm" onclick="confirmSignaturePlacement()">✓ Aplicar</button>
+                <button type="button" class="btn-sig-cancel" onclick="cancelSignaturePlacement()">✕</button>
+            </div>
+        </div>
+        <div class="signature-img-wrapper">
+            <img src="${dataUrl}" alt="Assinatura" />
+        </div>
+        <div class="sig-resize-handle"></div>
+    `;
+
+    container.appendChild(overlay);
+    setupSignatureOverlayInteractions(overlay, aspectRatio);
+    showToast('Posicione a assinatura e clique em Aplicar!', 'info');
+}
+
+function setupSignatureOverlayInteractions(overlay, aspectRatio) {
+    const resizeHandle = overlay.querySelector('.sig-resize-handle');
+    let isDragging = false;
+    let isResizing = false;
+    let startX, startY, startLeft, startTop, startWidth, startHeight;
+
+    const onDragStart = (e) => {
+        if (e.target.closest('.sig-resize-handle') || e.target.closest('button')) return;
+        isDragging = true;
+        const point = e.touches ? e.touches[0] : e;
+        startX = point.clientX;
+        startY = point.clientY;
+        startLeft = overlay.offsetLeft;
+        startTop = overlay.offsetTop;
+        if (e.cancelable) e.preventDefault();
+    };
+
+    const onDragMove = (e) => {
+        if (!isDragging) return;
+        if (e.cancelable) e.preventDefault();
+        const point = e.touches ? e.touches[0] : e;
+        const dx = point.clientX - startX;
+        const dy = point.clientY - startY;
+        overlay.style.left = `${startLeft + dx}px`;
+        overlay.style.top = `${startTop + dy}px`;
+    };
+
+    const onDragEnd = () => {
+        isDragging = false;
+    };
+
+    overlay.addEventListener('mousedown', onDragStart);
+    overlay.addEventListener('touchstart', onDragStart, { passive: false });
+    window.addEventListener('mousemove', onDragMove);
+    window.addEventListener('touchmove', onDragMove, { passive: false });
+    window.addEventListener('mouseup', onDragEnd);
+    window.addEventListener('touchend', onDragEnd);
+
+    if (resizeHandle) {
+        const onResizeStart = (e) => {
+            e.stopPropagation();
+            isResizing = true;
+            const point = e.touches ? e.touches[0] : e;
+            startX = point.clientX;
+            startY = point.clientY;
+            startWidth = overlay.offsetWidth;
+            startHeight = overlay.offsetHeight;
+            if (e.cancelable) e.preventDefault();
+        };
+
+        const onResizeMove = (e) => {
+            if (!isResizing) return;
+            if (e.cancelable) e.preventDefault();
+            const point = e.touches ? e.touches[0] : e;
+            const dx = point.clientX - startX;
+            const newW = Math.max(60, startWidth + dx);
+            const newH = Math.max(30, newW * aspectRatio);
+            overlay.style.width = `${Math.round(newW)}px`;
+            overlay.style.height = `${Math.round(newH)}px`;
+        };
+
+        const onResizeEnd = () => {
+            isResizing = false;
+        };
+
+        resizeHandle.addEventListener('mousedown', onResizeStart);
+        resizeHandle.addEventListener('touchstart', onResizeStart, { passive: false });
+        window.addEventListener('mousemove', onResizeMove);
+        window.addEventListener('touchmove', onResizeMove, { passive: false });
+        window.addEventListener('mouseup', onResizeEnd);
+        window.addEventListener('touchend', onResizeEnd);
+    }
+}
+
+function confirmSignaturePlacement() {
+    const box = $('signatureOverlayBox');
+    if (!box || !appliedSignatureImg) return;
+    const canvas = $('editorCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    const boxRect = box.getBoundingClientRect();
+    const canvasRect = canvas.getBoundingClientRect();
+
+    const scaleX = canvas.width / (canvasRect.width || 1);
+    const scaleY = canvas.height / (canvasRect.height || 1);
+
+    const drawX = (boxRect.left - canvasRect.left) * scaleX;
+    const drawY = (boxRect.top - canvasRect.top) * scaleY;
+    const drawW = boxRect.width * scaleX;
+    const drawH = boxRect.height * scaleY;
+
+    ctx.drawImage(appliedSignatureImg, drawX, drawY, drawW, drawH);
+
+    const updatedImg = new Image();
+    updatedImg.onload = () => {
+        state.originalImage = updatedImg;
+    };
+    updatedImg.src = canvas.toDataURL('image/png');
+
+    box.remove();
+    showToast('Assinatura fixada no documento!', 'success');
+}
+
+function cancelSignaturePlacement() {
+    const box = $('signatureOverlayBox');
+    if (box) box.remove();
+    showToast('Assinatura cancelada.', 'info');
+}
+
 function removeSignatureFromDocument() {
+    const box = $('signatureOverlayBox');
+    if (box) box.remove();
     appliedSignatureImg = null;
     drawImageToCanvas();
     showToast('Assinatura removida.', 'info');
@@ -6791,8 +7897,86 @@ async function handleBatchCapture(e) {
 
     hideLoading();
     showToast(`${files.length} páginas adicionadas!`, 'success');
-    renderPagesGrid();
+    updatePagesGrid();
     openModal('multiPageModal');
+}
+
+// ============================================
+// PDF Import (Multi-page PDF to Scanned Pages)
+// ============================================
+function triggerPdfUpload() {
+    closeModal('captureModal');
+    const input = $('pdfFileInput');
+    if (input) input.click();
+}
+
+async function handlePdfImport(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    if (typeof pdfjsLib === 'undefined') {
+        showToast('Biblioteca PDF.js não carregada.', 'error');
+        return;
+    }
+
+    showLoading('Carregando arquivo PDF...');
+
+    try {
+        const arrayBuffer = await file.arrayBuffer();
+        const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+        const pdf = await loadingTask.promise;
+        const numPages = pdf.numPages;
+
+        if (numPages === 0) {
+            hideLoading();
+            showToast('O arquivo PDF não contém páginas.', 'warning');
+            return;
+        }
+
+        const pageImages = [];
+
+        for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+            showLoading(`Renderizando página ${pageNum} de ${numPages} em alta resolução...`);
+            const page = await pdf.getPage(pageNum);
+            const viewport = page.getViewport({ scale: 2.0 });
+            const canvas = document.createElement('canvas');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            const ctx = canvas.getContext('2d');
+
+            await page.render({
+                canvasContext: ctx,
+                viewport: viewport
+            }).promise;
+
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+            pageImages.push(dataUrl);
+        }
+
+        hideLoading();
+
+        if (pageImages.length === 1) {
+            const img = new Image();
+            img.onload = () => {
+                state.originalImage = img;
+                state.currentImage = img;
+                openEditor(img);
+                showToast('Página do PDF carregada no editor! ✨', 'success');
+            };
+            img.src = pageImages[0];
+        } else {
+            pageImages.forEach(imgData => state.multiPageImages.push(imgData));
+            updatePagesGrid();
+            openModal('multiPageModal');
+            showToast(`${pageImages.length} páginas importadas do PDF com sucesso! 📄`, 'success');
+        }
+    } catch (err) {
+        hideLoading();
+        console.error('PDF Import error:', err);
+        showToast('Erro ao importar PDF: ' + err.message, 'error');
+    } finally {
+        event.target.value = '';
+    }
 }
 
 // ============================================
@@ -6801,6 +7985,56 @@ async function handleBatchCapture(e) {
 let liveCameraStream = null;
 let currentCameraFacing = 'environment';
 let isLiveBatchActive = false;
+let isTorchOn = false;
+
+function checkTorchCapability() {
+    const torchBtn = $('cameraTorchBtn');
+    if (!torchBtn || !liveCameraStream) return;
+    const track = liveCameraStream.getVideoTracks()[0];
+    const capabilities = track && track.getCapabilities ? track.getCapabilities() : {};
+    if (capabilities.torch) {
+        torchBtn.style.display = 'flex';
+        torchBtn.classList.toggle('active', isTorchOn);
+    } else {
+        torchBtn.style.display = 'none';
+        isTorchOn = false;
+        torchBtn.classList.remove('active');
+    }
+}
+
+async function toggleCameraTorch() {
+    if (!liveCameraStream) {
+        showToast('Câmera não está ativa', 'warning');
+        return;
+    }
+    const track = liveCameraStream.getVideoTracks()[0];
+    if (!track) {
+        showToast('Nenhum canal de vídeo disponível', 'error');
+        return;
+    }
+
+    const capabilities = track.getCapabilities ? track.getCapabilities() : {};
+    if (!capabilities.torch) {
+        showToast('Lanterna não disponível nesta câmera/dispositivo', 'warning');
+        return;
+    }
+
+    try {
+        isTorchOn = !isTorchOn;
+        await track.applyConstraints({
+            advanced: [{ torch: isTorchOn }]
+        });
+        const btn = $('cameraTorchBtn');
+        if (btn) {
+            btn.classList.toggle('active', isTorchOn);
+        }
+        triggerHaptic(30);
+        showToast(isTorchOn ? '🔦 Lanterna ligada' : '🔦 Lanterna desligada', 'info');
+    } catch (err) {
+        console.error('Erro ao alternar lanterna:', err);
+        showToast('Não foi possível controlar a lanterna', 'error');
+    }
+}
 
 async function startLiveCamera(batchMode = false) {
     isLiveBatchActive = batchMode;
@@ -6812,7 +8046,13 @@ async function startLiveCamera(batchMode = false) {
     const batchToggle = $('liveBatchToggleBtn');
     const batchCountVal = $('liveBatchCountVal');
 
-    if (badge) badge.textContent = isLiveBatchActive ? 'Modo Lote (Várias Págs)' : 'Câmera ao Vivo';
+    if (badge) {
+        if (idCardScanState && idCardScanState.active) {
+            badge.textContent = idCardScanState.step === 1 ? '🪪 RG/CNH (Frente)' : '🪪 RG/CNH (Verso)';
+        } else {
+            badge.textContent = isLiveBatchActive ? 'Modo Lote (Várias Págs)' : 'Câmera ao Vivo';
+        }
+    }
     if (batchCounter) {
         batchCounter.classList.toggle('hidden', !isLiveBatchActive);
         if (batchCountVal) batchCountVal.textContent = state.multiPageImages.length;
@@ -6854,6 +8094,7 @@ async function initLiveVideoStream() {
         liveCameraStream = await navigator.mediaDevices.getUserMedia(constraints);
         video.srcObject = liveCameraStream;
         await video.play();
+        checkTorchCapability();
         startRealtimeEdgeTracking();
     } catch (err) {
         console.warn('First 4K getUserMedia attempt failed, trying fallback video constraints:', err);
@@ -6868,6 +8109,7 @@ async function initLiveVideoStream() {
             });
             video.srcObject = liveCameraStream;
             await video.play();
+            checkTorchCapability();
             startRealtimeEdgeTracking();
         } catch (fallbackErr) {
             console.error('Camera access error:', fallbackErr);
@@ -6890,6 +8132,17 @@ async function initLiveVideoStream() {
 
 function stopLiveCamera() {
     stopRealtimeEdgeTracking();
+    isTorchOn = false;
+    const torchBtn = $('cameraTorchBtn');
+    if (torchBtn) torchBtn.classList.remove('active');
+
+    if (idCardScanState) {
+        idCardScanState.active = false;
+        idCardScanState.step = 1;
+    }
+    const banner = $('idCardStepBanner');
+    if (banner) banner.classList.add('hidden');
+
     if (liveCameraStream) {
         liveCameraStream.getTracks().forEach(track => track.stop());
         liveCameraStream = null;
@@ -6899,13 +8152,14 @@ function stopLiveCamera() {
     closeModal('liveCameraModal');
 
     if (isLiveBatchActive && state.multiPageImages.length > 0) {
-        renderPagesGrid();
+        updatePagesGrid();
         openModal('multiPageModal');
     }
 }
 
 async function switchLiveCamera() {
     currentCameraFacing = currentCameraFacing === 'environment' ? 'user' : 'environment';
+    isTorchOn = false;
     triggerHaptic(40);
     await initLiveVideoStream();
 }
@@ -6932,21 +8186,83 @@ function triggerFileFallback() {
     $('cameraInput').click();
 }
 
+let _shutterAudioCtx = null;
+
 function playShutterSound() {
     try {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(800, audioCtx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(120, audioCtx.currentTime + 0.08);
-        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.09);
-    } catch (e) {}
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        if (!_shutterAudioCtx || _shutterAudioCtx.state === 'closed') {
+            _shutterAudioCtx = new AudioCtx();
+        }
+        if (_shutterAudioCtx.state === 'suspended') {
+            _shutterAudioCtx.resume();
+        }
+        const ctx = _shutterAudioCtx;
+        const now = ctx.currentTime;
+
+        const createClick = (time, freq, duration, gainLevel, noiseCutoff) => {
+            const bufferSize = Math.max(1, Math.floor(ctx.sampleRate * duration));
+            const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.22));
+            }
+            const noise = ctx.createBufferSource();
+            noise.buffer = buffer;
+
+            const noiseFilter = ctx.createBiquadFilter();
+            noiseFilter.type = 'bandpass';
+            noiseFilter.frequency.setValueAtTime(noiseCutoff, time);
+            noiseFilter.Q.setValueAtTime(2.2, time);
+
+            const noiseGain = ctx.createGain();
+            noiseGain.gain.setValueAtTime(gainLevel * 0.75, time);
+            noiseGain.gain.exponentialRampToValueAtTime(0.001, time + duration);
+
+            noise.connect(noiseFilter);
+            noiseFilter.connect(noiseGain);
+            noiseGain.connect(ctx.destination);
+            noise.start(time);
+            noise.stop(time + duration);
+
+            const osc = ctx.createOscillator();
+            const oscGain = ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, time);
+            osc.frequency.exponentialRampToValueAtTime(freq * 0.25, time + duration);
+
+            oscGain.gain.setValueAtTime(gainLevel, time);
+            oscGain.gain.exponentialRampToValueAtTime(0.001, time + duration);
+
+            osc.connect(oscGain);
+            oscGain.connect(ctx.destination);
+            osc.start(time);
+            osc.stop(time + duration);
+        };
+
+        // Click 1: Front shutter curtain open (crisp, high mechanical snap)
+        createClick(now, 1850, 0.022, 0.45, 3600);
+
+        // Click 2: Rear shutter curtain close (deeper mechanical clack)
+        createClick(now + 0.046, 850, 0.036, 0.55, 1750);
+
+        // Low body resonance / mirror slap thump
+        const thump = ctx.createOscillator();
+        const thumpGain = ctx.createGain();
+        thump.type = 'sine';
+        thump.frequency.setValueAtTime(150, now + 0.046);
+        thump.frequency.exponentialRampToValueAtTime(40, now + 0.11);
+        thumpGain.gain.setValueAtTime(0.35, now + 0.046);
+        thumpGain.gain.exponentialRampToValueAtTime(0.001, now + 0.11);
+        thump.connect(thumpGain);
+        thumpGain.connect(ctx.destination);
+        thump.start(now + 0.046);
+        thump.stop(now + 0.12);
+
+    } catch (e) {
+        console.warn('Shutter sound error:', e);
+    }
 }
 
 async function captureLivePhoto() {
@@ -7040,6 +8356,8 @@ window.closeSignatureModal = closeSignatureModal;
 window.clearSignatureCanvas = clearSignatureCanvas;
 window.setSigColor = setSigColor;
 window.applySignatureToDocument = applySignatureToDocument;
+window.confirmSignaturePlacement = confirmSignaturePlacement;
+window.cancelSignaturePlacement = cancelSignaturePlacement;
 window.removeSignatureFromDocument = removeSignatureFromDocument;
 window.updateEraserSize = updateEraserSize;
 window.openBarcodeModal = openBarcodeModal;
@@ -7093,6 +8411,12 @@ window.app = {
     },
     selectPackage(index) {
         selectPackage(index);
+    },
+    setRechargeMethod(method) {
+        setRechargeMethod(method);
+    },
+    createPixPayment() {
+        createPixPayment();
     },
     generatePIX() {
         generatePIX();

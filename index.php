@@ -237,6 +237,11 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
                         <span id="googleConnectBtnText">Conectar Google Drive</span>
                     </button>
                 </div>
+                <div id="authButtonsContainer" style="margin-top: 8px; width: 100%; display: flex; flex-direction: column; gap: 8px;">
+                    <button id="logoutBtn" onclick="logout()" class="google-login-btn hidden" style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444;">
+                        <span>🚪 Sair da Conta</span>
+                    </button>
+                </div>
             </div>
             <nav class="side-menu-nav">
                 <button id="menuHome" class="menu-item active">
@@ -343,8 +348,8 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
                 </button>
             </nav>
             <div class="side-menu-footer">
-                <p>Versão 2.0.0</p>
-                <p style="margin-top: 4px; font-size: 10px;">
+                <p id="sideMenuVersion">Versão 2.0.0</p>
+                <p style="margin-top: 4px; font-size: 10px;" id="sideMenuMadeWith">
                     Feito com amor por <a href="https://4u.ia.br" target="_blank" style="color: var(--accent-secondary); font-weight: bold; text-decoration: none;">4u.ia.br</a>
                 </p>
             </div>
@@ -400,10 +405,19 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
                     </div>
                     <span>🪪 Modo RG / CNH (2 Lados em 1 A4)</span>
                 </button>
+                <button id="openPdfBtn" class="capture-option" onclick="triggerPdfUpload()">
+                    <div class="capture-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">
+                        <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
+                            <path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1h1.5V11H19v2h-1.5V7h3v1.5zM9 9.5h1v-1H9v1zm5 2h1v-3h-1v3zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6z"/>
+                        </svg>
+                    </div>
+                    <span>📄 Abrir / Editar PDF</span>
+                </button>
             </div>
             <input type="file" id="cameraInput" accept="image/*" capture="environment" hidden>
             <input type="file" id="batchCameraInput" accept="image/*" capture="environment" multiple hidden>
             <input type="file" id="galleryInput" accept="image/*" multiple hidden>
+            <input type="file" id="pdfFileInput" accept="application/pdf" onchange="handlePdfImport(event)" hidden>
         </div>
     </div>
 
@@ -417,6 +431,17 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
                 </button>
                 <div class="camera-title-badge" id="cameraModeBadge">Câmera ao Vivo</div>
                 <div class="camera-top-actions">
+                    <button id="autoCaptureToggleBtn" class="camera-icon-btn auto-active" title="Disparo Automático Inteligente" onclick="toggleAutoCapture()">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
+                        </svg>
+                        <span class="auto-capture-badge">AUTO</span>
+                    </button>
+                    <button id="cameraTorchBtn" class="camera-icon-btn" title="Lanterna" onclick="toggleCameraTorch()">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                            <path d="M9 2c-.55 0-1 .45-1 1v2c0 .55.45 1 1 1h6c.55 0 1-.45 1-1V3c0-.55-.45-1-1-1H9zm-2 6v1.5c0 1.8 1 3.4 2.5 4.3V21c0 .55.45 1 1 1h3c.55 0 1-.45 1-1v-7.2c1.5-.9 2.5-2.5 2.5-4.3V8H7zm5 6c-.83 0-1.5-.67-1.5-1.5S11.17 11 12 11s1.5.67 1.5 1.5S12.83 14 12 14z"/>
+                        </svg>
+                    </button>
                     <button id="switchLiveCameraBtn" class="camera-icon-btn" title="Alternar Câmera" onclick="switchLiveCamera()">
                         <svg viewBox="0 0 24 24"><path d="M9 12c0 1.66 1.34 3 3 3s3-1.34 3-3-1.34-3-3-3-3 1.34-3 3zm13-2V7c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v3h2v7c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-7h2zM7 8H5V6h2v2zm0 6c0-2.76 2.24-5 5-5s5 2.24 5 5-2.24 5-5 5-5-2.24-5-5z"/></svg>
                     </button>
@@ -499,6 +524,11 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
                     <div class="crop-handle" data-corner="tr"></div>
                     <div class="crop-handle" data-corner="bl"></div>
                     <div class="crop-handle" data-corner="br"></div>
+                </div>
+                <!-- Lupa de Alta Precisão (Magnifier Loupe) -->
+                <div id="cornerMagnifier" class="corner-magnifier hidden">
+                    <canvas id="magnifierCanvas" width="130" height="130"></canvas>
+                    <div class="magnifier-crosshair"></div>
                 </div>
             </div>
 
@@ -669,15 +699,15 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
                 <div class="tool-group">
                     <span class="tool-label">Estilo:</span>
                     <div class="ratio-buttons">
-                        <button type="button" class="ratio-btn active" id="redactModeBlack" onclick="setRedactMode('black')">⬛ Tarja Preta</button>
-                        <button type="button" class="ratio-btn" id="redactModeBlur" onclick="setRedactMode('blur')">🌁 Desfoque (Blur)</button>
+                        <button type="button" class="redact-btn active" id="redactModeBlack" onclick="setRedactMode('black')">⬛ Tarja Preta</button>
+                        <button type="button" class="redact-btn" id="redactModeBlur" onclick="setRedactMode('blur')">🌁 Desfoque (Blur)</button>
                     </div>
                 </div>
                 <div class="tool-group">
                     <span class="tool-label">Forma:</span>
                     <div class="ratio-buttons">
-                        <button type="button" class="ratio-btn active" id="redactShapeRect" onclick="setRedactShape('rect')">▭ Retângulo</button>
-                        <button type="button" class="ratio-btn" id="redactShapeBrush" onclick="setRedactShape('brush')">🖌️ Pincel</button>
+                        <button type="button" class="redact-btn active" id="redactShapeRect" onclick="setRedactShape('rect')">▭ Retângulo</button>
+                        <button type="button" class="redact-btn" id="redactShapeBrush" onclick="setRedactShape('brush')">🖌️ Pincel</button>
                     </div>
                 </div>
                 <div class="tool-actions">
@@ -1052,6 +1082,12 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
                         </svg>
                         <span>Compartilhar</span>
                     </button>
+                    <button id="exportExcelBtn" class="ocr-action-btn" style="background: rgba(16, 185, 129, 0.15); color: #10b981;" onclick="exportOcrToExcel()">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14.5l-2.5-3.8-2.5 3.8H5l3.8-5.7L5.2 8h2l2.3 3.5L11.8 8h2l-3.6 5.8 3.8 5.7h-2zm7 .5h-4v-2h4v2zm0-4h-4v-2h4v2zm0-4h-4V8h4v2z"/>
+                        </svg>
+                        <span>Exportar Excel (.xlsx)</span>
+                    </button>
                     <button id="printOcrThermalBtn" class="ocr-action-btn btn-thermal-print full-width" onclick="printOcrTextThermal()">
                         <svg viewBox="0 0 24 24" width="18" height="18">
                             <path fill="currentColor" d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/>
@@ -1260,28 +1296,61 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
 
     <!-- About Modal -->
     <div id="aboutModal" class="modal">
-        <div class="modal-content about-modal" style="max-width: 440px; padding: 24px; text-align: center; border-radius: var(--radius-xl); background: var(--bg-secondary);">
-            <div class="modal-header" style="justify-content: flex-end; margin-bottom: 8px;">
+        <div class="modal-content about-modal" style="max-width: 460px; padding: 24px; text-align: center; border-radius: var(--radius-xl); background: var(--bg-secondary);">
+            <div class="modal-header" style="justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <div style="display: flex; gap: 6px;">
+                    <button type="button" id="aboutLangPt" class="ratio-btn active" style="padding: 4px 10px; font-size: 11px; min-width: auto;" onclick="setAboutLang('pt')">🇧🇷 Português</button>
+                    <button type="button" id="aboutLangEn" class="ratio-btn" style="padding: 4px 10px; font-size: 11px; min-width: auto;" onclick="setAboutLang('en')">🇺🇸 English</button>
+                </div>
                 <button id="closeAboutBtn" class="icon-btn" onclick="closeModal('aboutModal')">
                     <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
                 </button>
             </div>
             <div style="font-size: 52px; margin-bottom: 8px;">📄</div>
             <h2 style="font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 4px;">DocScan Pro</h2>
-            <div style="display: inline-block; background: rgba(108, 92, 231, 0.2); color: var(--accent-secondary); border: 1px solid var(--accent-primary); border-radius: 999px; padding: 3px 12px; font-size: 12px; font-weight: 600; margin-bottom: 16px;">Versão 2.0.0 — Edição 2026</div>
+            <div style="display: inline-block; background: rgba(108, 92, 231, 0.2); color: var(--accent-secondary); border: 1px solid var(--accent-primary); border-radius: 999px; padding: 3px 12px; font-size: 12px; font-weight: 600; margin-bottom: 16px;" id="aboutVersionBadge">Versão 2.0.0 — Edição 2026</div>
             
-            <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 16px;">
-                Scanner de documentos profissional com processamento local em alta definição, OCR pesquisável, leitor de boletos bancários, assinatura digital touch e suporte nativo a impressão térmica de 80mm.
-            </p>
+            <!-- PT Content -->
+            <div id="aboutContentPt">
+                <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 16px;">
+                    Scanner de documentos profissional com processamento local em alta definição, OCR pesquisável, leitor de boletos bancários, assinatura digital touch e suporte nativo a impressão térmica de 80mm.
+                </p>
 
-            <div style="background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px; text-align: left; font-size: 12px; color: var(--text-muted); display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px;">
-                <div>🔒 <strong>Privacidade:</strong> 100% dos dados ficam no seu dispositivo</div>
-                <div>⚡ <strong>Modo Offline:</strong> Funciona sem conexão à internet</div>
-                <div>🖨️ <strong>Térmica:</strong> Integrado com Bematech MP-4200 TH</div>
-                <div>✨ <strong>Desenvolvido por:</strong> <a href="https://4u.ia.br" target="_blank" style="color: var(--accent-secondary); text-decoration: none; font-weight: 600;">4u.ia.br</a></div>
+                <div style="background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px; text-align: left; font-size: 12px; color: var(--text-muted); display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px;">
+                    <div>💎 <strong>100% Gratuito:</strong> Scanner, filtros, assinatura e PDF são gratuitos. Pagamentos apenas para IA (OCR).</div>
+                    <div>🔒 <strong>Privacidade:</strong> 100% dos dados ficam no seu dispositivo</div>
+                    <div>⚡ <strong>Modo Offline:</strong> Funciona sem conexão à internet</div>
+                    <div>🖨️ <strong>Térmica:</strong> Integrado com Bematech MP-4200 TH</div>
+                    <div>✨ <strong>Desenvolvido por:</strong> <a href="https://4u.ia.br" target="_blank" style="color: var(--accent-secondary); text-decoration: none; font-weight: 600;">4u.ia.br</a></div>
+                    <div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; gap: 14px; font-size: 11px;">
+                        <a href="/app/auth/privacidade.html" target="_blank" style="color: var(--accent-secondary); text-decoration: underline;">Política de Privacidade</a>
+                        <a href="/app/auth/termos.html" target="_blank" style="color: var(--accent-secondary); text-decoration: underline;">Termos de Uso</a>
+                    </div>
+                </div>
+
+                <button class="save-btn primary" style="width: 100%; justify-content: center;" onclick="closeModal('aboutModal')">Entendi</button>
             </div>
 
-            <button class="save-btn primary" style="width: 100%; justify-content: center;" onclick="closeModal('aboutModal')">Entendi</button>
+            <!-- EN Content -->
+            <div id="aboutContentEn" style="display: none;">
+                <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 16px;">
+                    Professional document scanner with high-definition local processing, searchable AI OCR, barcode and bank slip reader, touch digital signature, and native 80mm thermal printing.
+                </p>
+
+                <div style="background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px; text-align: left; font-size: 12px; color: var(--text-muted); display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px;">
+                    <div>💎 <strong>100% Free:</strong> Scanner, filters, signing, and PDF are free. Payments are strictly for AI processing (OCR).</div>
+                    <div>🔒 <strong>Privacy:</strong> 100% of data remains on your device</div>
+                    <div>⚡ <strong>Offline Mode:</strong> Works without an internet connection</div>
+                    <div>🖨️ <strong>Thermal:</strong> Integrated with Bematech MP-4200 TH</div>
+                    <div>✨ <strong>Developed by:</strong> <a href="https://4u.ia.br" target="_blank" style="color: var(--accent-secondary); text-decoration: none; font-weight: 600;">4u.ia.br</a></div>
+                    <div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; gap: 14px; font-size: 11px;">
+                        <a href="/app/auth/privacidade.html?lang=en" target="_blank" style="color: var(--accent-secondary); text-decoration: underline;">Privacy Policy</a>
+                        <a href="/app/auth/termos.html?lang=en" target="_blank" style="color: var(--accent-secondary); text-decoration: underline;">Terms of Use</a>
+                    </div>
+                </div>
+
+                <button class="save-btn primary" style="width: 100%; justify-content: center;" onclick="closeModal('aboutModal')">Got it</button>
+            </div>
         </div>
     </div>
 
@@ -1575,6 +1644,15 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- OpenCV.js para detecção profissional de bordas e contornos (CamScanner-grade) -->
     <script src="https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.9.0-release.2/dist/opencv.js" async></script>
+    <!-- PDF.js para importar e visualizar PDFs existentes -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        if (typeof pdfjsLib !== 'undefined') {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+    </script>
+    <!-- SheetJS (xlsx) para exportação de tabelas e OCR para Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="script.js?v=<?php echo $v; ?>"></script>
 </body>
 

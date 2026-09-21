@@ -4,3 +4,4 @@ auth.php
 *.db
 *.sqlite
 *.log
+print/

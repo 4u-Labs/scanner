@@ -4,29 +4,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tutorial - DocScan Pro</title>
+    <title>Tutorial & Guia do Usuário — DocScan Pro</title>
+    <meta name="description" content="Manual completo do usuário do DocScan Pro: digitalização HD, recorte com lupa, OCR IA, boletos Febraban, assinatura touch, impressão térmica e Google Drive.">
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
+        :root {
+            --gold: #FFB800;
+            --em: #10B981;
+            --blue: #3b82f6;
+        }
+
         body {
             overflow-y: auto;
             background: var(--bg-primary);
-            padding: 20px;
-            padding-bottom: 80px;
+            padding: 20px 16px 80px;
+            font-family: 'Inter', sans-serif;
+            color: var(--text-primary);
         }
 
         .tutorial-container {
-            max-width: 800px;
+            max-width: 920px;
             margin: 0 auto;
         }
 
         .tutorial-header {
             display: flex;
             align-items: center;
-            gap: 15px;
-            margin-bottom: 30px;
-            padding-bottom: 15px;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
             border-bottom: 1px solid var(--border-color);
+            flex-wrap: wrap;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
         }
 
         .back-btn {
@@ -36,72 +53,151 @@
             padding: 8px 16px;
             border-radius: var(--radius-md);
             cursor: pointer;
-            display: flex;
+            display: inline-flex;
             align-items: center;
             gap: 8px;
             text-decoration: none;
-            font-weight: 500;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: var(--transition);
+        }
+
+        .back-btn:hover {
+            background: var(--bg-tertiary);
+            border-color: var(--accent-primary);
+        }
+
+        .lang-switch {
+            display: inline-flex;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 100px;
+            padding: 3px;
+            gap: 4px;
+        }
+
+        .lang-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            padding: 6px 14px;
+            border-radius: 100px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .lang-btn.active {
+            background: var(--accent-gradient);
+            color: #fff;
+            box-shadow: 0 2px 10px rgba(108, 92, 231, 0.4);
+        }
+
+        .toc-bar {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 12px;
+            margin-bottom: 28px;
+            scrollbar-width: thin;
+        }
+
+        .toc-chip {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            text-decoration: none;
+            white-space: nowrap;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .toc-chip:hover {
+            border-color: var(--accent-secondary);
+            color: #fff;
+            background: var(--bg-tertiary);
         }
 
         section {
-            margin-bottom: 40px;
+            margin-bottom: 36px;
             background: var(--bg-card);
-            padding: 24px;
+            padding: 28px 24px;
             border-radius: var(--radius-lg);
             border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
         }
 
         h1 {
             font-size: 1.8rem;
+            font-weight: 800;
             margin: 0;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
         h2 {
-            font-size: 1.4rem;
+            font-size: 1.35rem;
+            font-weight: 700;
             color: var(--accent-secondary);
-            margin-bottom: 15px;
+            margin-bottom: 16px;
             display: flex;
             align-items: center;
             gap: 10px;
         }
 
         h3 {
-            font-size: 1.1rem;
-            margin-bottom: 10px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            margin-bottom: 8px;
             color: var(--text-primary);
         }
 
         p {
             color: var(--text-secondary);
-            margin-bottom: 15px;
+            margin-bottom: 14px;
+            line-height: 1.7;
+            font-size: 0.95rem;
         }
 
         .feature-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 16px;
+            margin-top: 16px;
         }
 
         .feature-item {
             background: var(--bg-tertiary);
-            padding: 15px;
+            padding: 18px;
             border-radius: var(--radius-md);
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
 
-        .icon {
-            font-size: 1.5rem;
+        .feature-item h3 {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
 
         .step-list {
             list-style: none;
             counter-reset: steps;
+            margin-top: 16px;
         }
 
         .step-list li {
             position: relative;
-            padding-left: 45px;
-            margin-bottom: 20px;
+            padding-left: 48px;
+            margin-bottom: 22px;
             color: var(--text-secondary);
+            line-height: 1.6;
         }
 
         .step-list li::before {
@@ -109,164 +205,761 @@
             content: counter(steps);
             position: absolute;
             left: 0;
-            top: 0;
-            width: 30px;
-            height: 30px;
+            top: 2px;
+            width: 32px;
+            height: 32px;
             background: var(--accent-gradient);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            font-weight: bold;
+            font-weight: 700;
+            font-size: 0.85rem;
+            box-shadow: 0 2px 8px rgba(108, 92, 231, 0.4);
         }
 
         .highlight-box {
-            background: rgba(108, 92, 231, 0.1);
+            background: rgba(108, 92, 231, 0.08);
             border-left: 4px solid var(--accent-primary);
-            padding: 15px;
+            padding: 16px 20px;
             margin: 20px 0;
             border-radius: 0 var(--radius-md) var(--radius-md) 0;
+            font-size: 0.92rem;
+            line-height: 1.6;
+            color: var(--text-secondary);
         }
 
-        .filter-demo {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-            overflow-x: auto;
-            padding-bottom: 10px;
+        .highlight-box strong {
+            color: #fff;
         }
 
-        .filter-chip {
-            background: var(--bg-tertiary);
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            white-space: nowrap;
+        .highlight-box.tip {
+            background: rgba(16, 185, 129, 0.08);
+            border-left-color: var(--em);
+        }
+
+        .highlight-box.warning {
+            background: rgba(255, 184, 0, 0.08);
+            border-left-color: var(--gold);
         }
 
         .tag {
             background: var(--success);
-            color: black;
+            color: #000;
             padding: 2px 8px;
-            border-radius: 4px;
+            border-radius: 6px;
             font-size: 0.7rem;
-            font-weight: bold;
+            font-weight: 700;
             vertical-align: middle;
-            margin-left: 5px;
+            text-transform: uppercase;
+        }
+
+        .tag.blue {
+            background: #3b82f6;
+            color: #fff;
+        }
+
+        .tag.gold {
+            background: var(--gold);
+            color: #000;
+        }
+
+        .shortcut-badge {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border-color);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.8rem;
+            color: #fff;
+        }
+
+        footer {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        @media (max-width: 600px) {
+            section {
+                padding: 20px 16px;
+            }
+
+            h1 {
+                font-size: 1.4rem;
+            }
+
+            .step-list li {
+                padding-left: 42px;
+            }
         }
     </style>
 </head>
 
 <body>
     <div class="tutorial-container">
+        <!-- HEADER -->
         <header class="tutorial-header">
-            <a href="index.html" class="back-btn">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                    <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
-                </svg>
-                Voltar
-            </a>
-            <h1>Guia do Usuário DocScan Pro</h1>
+            <div class="header-left">
+                <a href="index.php" class="back-btn">
+                    <i data-lucide="arrow-left" size="18"></i>
+                    <span id="btnBackText">Voltar ao App</span>
+                </a>
+                <h1 id="headerTitle">DocScan Pro — Manual do Usuário</h1>
+            </div>
+            <div class="lang-switch">
+                <button class="lang-btn active" id="langPtBtn" onclick="setTutorialLang('pt')">🇧🇷 Português</button>
+                <button class="lang-btn" id="langEnBtn" onclick="setTutorialLang('en')">🇺🇸 English</button>
+            </div>
         </header>
 
-        <section id="basics">
-            <h2><span class="icon">🚀</span> Primeiros Passos</h2>
-            <p>O DocScan Pro é o seu scanner de bolso profissional. Aqui você aprende a tirar o máximo proveito dele.
-            </p>
-            <ul class="step-list">
-                <li>
-                    <h3>Capture o Documento</h3>
-                    Toque no botão central da câmera. O app abrirá a câmera nativa do seu celular para garantir a
-                    <strong>máxima resolução</strong> possível.
-                </li>
-                <li>
-                    <h3>Ajuste as Bordas</h3>
-                    O sistema tentará detectar as bordas automaticamente. Se necessário, arraste os pontos roxos nas
-                    quinas para alinhar perfeitamente com o papel.
-                </li>
-                <li>
-                    <h3>Aplique Filtros</h3>
-                    Mude para a aba "Filtros" para clarear o documento. O filtro <strong>Mágico</strong> é ativado por
-                    padrão para entregar um fundo branco e texto nítido.
-                </li>
-            </ul>
-        </section>
-
-        <section id="filters">
-            <h2><span class="icon">✨</span> Filtros e Qualidade</h2>
-            <p>Nossos filtros são otimizados para converter fotos de celular em documentos que parecem escaneados em
-                mesa oficial.</p>
-            <div class="feature-grid">
-                <div class="feature-item">
-                    <h3>Varinha Mágica <span class="tag">TOP</span></h3>
-                    <p>Remove sombras, clareia fundos cinzas e destaca a tinta preta. Ideal para notas fiscais,
-                        contratos e formulários.</p>
-                </div>
-                <div class="feature-item">
-                    <h3>Documento (P&B)</h3>
-                    <p>Transforma a imagem em preto e branco absoluto. Ótimo para texto puro onde você quer o arquivo
-                        mais leve possível.</p>
-                </div>
+        <!-- PORTUGUESE CONTENT -->
+        <div id="contentPt">
+            <!-- QUICK NAV BAR -->
+            <div class="toc-bar">
+                <a href="#pt-capture" class="toc-chip"><i data-lucide="camera" size="14"></i> Câmera & Captura</a>
+                <a href="#pt-crop" class="toc-chip"><i data-lucide="crop" size="14"></i> Recorte & Lupa</a>
+                <a href="#pt-filters" class="toc-chip"><i data-lucide="sliders" size="14"></i> Filtros & Ajustes</a>
+                <a href="#pt-idcard" class="toc-chip"><i data-lucide="credit-card" size="14"></i> RG / CNH Frente & Verso</a>
+                <a href="#pt-signature" class="toc-chip"><i data-lucide="pen-tool" size="14"></i> Assinatura & Carimbos</a>
+                <a href="#pt-redact" class="toc-chip"><i data-lucide="shield" size="14"></i> Tarjas & Censura</a>
+                <a href="#pt-ocr" class="toc-chip"><i data-lucide="file-text" size="14"></i> OCR Texto IA</a>
+                <a href="#pt-barcode" class="toc-chip"><i data-lucide="scan-barcode" size="14"></i> Boletos Febraban</a>
+                <a href="#pt-thermal" class="toc-chip"><i data-lucide="printer" size="14"></i> Impressão Térmica</a>
+                <a href="#pt-pdf" class="toc-chip"><i data-lucide="layers" size="14"></i> Múltiplas Páginas & PDF</a>
+                <a href="#pt-drive" class="toc-chip"><i data-lucide="cloud" size="14"></i> Google Drive</a>
+                <a href="#pt-folders" class="toc-chip"><i data-lucide="lock" size="14"></i> Pastas com PIN</a>
             </div>
-            <div class="highlight-box">
-                <strong>Dica de Qualidade:</strong> O app sempre processa a imagem final usando a resolução original da
-                foto, garantindo que mesmo letras pequenas fiquem legíveis ao exportar para PDF.
-            </div>
-        </section>
 
-        <section id="ocr">
-            <h2><span class="icon">🔍</span> Extração de Texto (OCR)</h2>
-            <p>Transforme fotos em texto editável em segundos usando nossa engine avançada baseada em Tesseract.js.</p>
-            <ul class="step-list">
-                <li>Abra um arquivo ou use o editor durante um novo scan.</li>
-                <li>Toque no botão <strong>Extrair Texto (OCR)</strong>.</li>
-                <li>O app carregará os modelos de idioma (Português e Inglês) e processará a imagem.</li>
-                <li>Copie o texto extraído para usar em outros aplicativos.</li>
-            </ul>
-            <div class="highlight-box">
-                <strong>Bônus Inicial:</strong> Novos usuários ganham automaticamente <strong>20 créditos
-                    gratuitos</strong> para testar o OCR! Cada extração consome 1 crédito.
-            </div>
-        </section>
+            <!-- 1. CAPTURA E CÂMERA INTELIGENTE -->
+            <section id="pt-capture">
+                <h2><i data-lucide="camera" size="22"></i> 1. Câmera HD e Captura Automática</h2>
+                <p>O DocScan Pro utiliza acesso direto à câmera de alta definição do seu celular ou tablet, garantindo foco preciso e resolução máxima para leitura de textos minúsculos.</p>
+                
+                <ul class="step-list">
+                    <li>
+                        <h3>Inicie o Scan</h3>
+                        Toque no botão central flutuante da câmera na tela principal. O visualizador abrirá imediatamente.
+                    </li>
+                    <li>
+                        <h3>Disparo Automático Inteligente</h3>
+                        Posicione a câmera perpendicularmente sobre o documento em uma superfície plana e contrastante. Quando o app detectar que o papel está estável e as bordas identificadas, ele realizará o disparo automaticamente com som de obturador de alta fidelidade.
+                    </li>
+                    <li>
+                        <h3>Controles de Câmera</h3>
+                        Você pode ativar a <strong>Lanterna / Torch</strong> para eliminar sombras em ambientes com pouca luz, alternar entre câmera traseira e frontal, ou alternar entre o modo Automático e Manual.
+                    </li>
+                    <li>
+                        <h3>Upload da Galeria</h3>
+                        Já tirou uma foto ou recebeu um documento em PDF/imagem pelo WhatsApp? Toque no botão de galeria/arquivo para carregar qualquer imagem ou PDF existente.
+                    </li>
+                </ul>
 
-        <section id="credits">
-            <h2><span class="icon">💳</span> Créditos e Pagamentos</h2>
-            <p>O scan básico, filtros e exportação para PDF são <strong>gratuitos e ilimitados</strong>. O OCR requer
-                créditos para cobrir o processamento persistente.</p>
-            <div class="feature-grid">
-                <div class="feature-item">
-                    <h3>Como comprar</h3>
-                    <p>No menu lateral, toque em "Comprar Créditos". Escolha um pacote e pague via <strong>PIX</strong>
-                        para liberação imediata.</p>
+                <div class="highlight-box tip">
+                    <strong>💡 Dica de Ouro:</strong> Coloque o documento sobre uma mesa escura ou com cor diferente do papel (por exemplo, papel branco sobre mesa de madeira ou toalha escura). Isso garante que o detector de bordas encontre os cantos instantaneamente com 100% de precisão.
                 </div>
-                <div class="feature-item">
-                    <h3>Pacotes</h3>
-                    <p>Temos planos de 10, 25 (Mais Popular) e 60 créditos, com preços a partir de R$ 5,00.</p>
-                </div>
-            </div>
-        </section>
+            </section>
 
-        <section id="folders">
-            <h2><span class="icon">🔒</span> Organização e Segurança</h2>
-            <p>Mantenha seus documentos em ordem e seguros.</p>
-            <div class="feature-grid">
-                <div class="feature-item">
-                    <h3>Pastas com PIN</h3>
-                    <p>Você pode criar pastas protegidas por senha. Ideal para documentos pessoais ou sensíveis.</p>
-                </div>
-                <div class="feature-item">
-                    <h3>Nuvem (Google Drive)</h3>
-                    <p>Conecte sua conta do Google Drive nas configurações para fazer backup automático dos seus
-                        documentos e acessá-los de qualquer lugar.</p>
-                </div>
-            </div>
-        </section>
+            <!-- 2. RECORTE COM LUPA DE PRECISÃO -->
+            <section id="pt-crop">
+                <h2><i data-lucide="crop" size="22"></i> 2. Detecção de Bordas com Lupa Flutuante</h2>
+                <p>Diga adeus a dedos que tapam a quina do documento na hora de ajustar o recorte!</p>
 
-        <footer style="text-align: center; color: var(--text-muted); font-size: 0.9rem;">
-            DocScan Pro © 2026 - Digitalização Inteligente
+                <div class="feature-grid">
+                    <div class="feature-item">
+                        <h3>Lupa Flutuante em Tempo Real <span class="tag">EXCLUSIVO</span></h3>
+                        <p>Ao tocar e arrastar qualquer uma das 4 bolinhas lilases nas quinas do documento, uma lupa ampliada surge posicionada estrategicamente <strong>acima do seu dedo</strong>, permitindo posicionar o vértice no milímetro exato da quina do papel.</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>Correção de Perspectiva 3D</h3>
+                        <p>Mesmo que você tire a foto de lado ou inclinada, a engine de visão computacional estica e achata o documento como se ele estivesse perfeitamente escaneado de cima em um scanner de mesa.</p>
+                    </div>
+                </div>
+
+                <div class="highlight-box">
+                    <strong>Atalhos Úteis no Editor de Bordas:</strong>
+                    <br>• <strong>Tela Cheia / Expandir:</strong> Ajusta as bordas para cobrir toda a foto caso queira capturar além do papel.
+                    <br>• <strong>Auto-Detectar:</strong> Recalcula o contorno automático a qualquer momento.
+                </div>
+            </section>
+
+            <!-- 3. FILTROS E AJUSTES FINOS -->
+            <section id="pt-filters">
+                <h2><i data-lucide="sliders" size="22"></i> 3. Filtros Profissionais e Ajustes Finos</h2>
+                <p>Transforme fotos caseiras em documentos formais e legíveis com nossa galeria de filtros otimizados para cada tipo de papel.</p>
+
+                <div class="feature-grid">
+                    <div class="feature-item">
+                        <h3>Varinha Mágica <span class="tag">MAIS USADO</span></h3>
+                        <p>Nosso algoritmo proprietário clareia o fundo acinzentado, elimina sombras de mãos ou do celular e satura a tinta das letras para leitura impecável.</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>Documento P&B (Sauvola)</h3>
+                        <p>Binarização avançada de alta precisão. Transforma o papel em branco puro (#FFFFFF) e o texto em preto puro (#000000). Perfeito para notas fiscais, recibos térmicos e contratos.</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>Escala de Cinza</h3>
+                        <p>Converte em tons de cinza suaves, preservando fotos de identificação, carimbos e gradientes com fidelidade máxima.</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>Original & Cores Vivas</h3>
+                        <p>Mantém as cores originais da fotografia com leve reforço de contraste e vivacidade para documentos coloridos e ilustrações.</p>
+                    </div>
+                </div>
+
+                <div class="highlight-box">
+                    <strong>Ajustes Manuais:</strong> Na barra inferior, use os seletores de <strong>Brilho</strong>, <strong>Contraste</strong>, <strong>Nitidez</strong> e os botões de <strong>Girar 90°</strong> (horário/anti-horário) para alcançar o acabamento ideal.
+                </div>
+            </section>
+
+            <!-- 4. DOCUMENTO FRENTE E VERSO (RG / CNH) -->
+            <section id="pt-idcard">
+                <h2><i data-lucide="credit-card" size="22"></i> 4. Modo Documento de Identidade (RG / CNH 2 em 1)</h2>
+                <p>Digitalize identidades, CNHs, crachás ou cartões de visita com a Frente e o Verso organizados em uma única página A4 ou formato cartão.</p>
+
+                <ul class="step-list">
+                    <li>
+                        <h3>Selecione o Modo "RG / CNH"</h3>
+                        Na câmera ou na criação de novo documento, selecione a opção <strong>"Identidade (Frente & Verso)"</strong>.
+                    </li>
+                    <li>
+                        <h3>Capture a Frente</h3>
+                        Alinhe a frente do documento na moldura guia da tela e fotografe. Ajuste as bordas com a lupa.
+                    </li>
+                    <li>
+                        <h3>Capture o Verso</h3>
+                        Vire o documento físico e capture o verso seguindo a mesma moldura.
+                    </li>
+                    <li>
+                        <h3>Composição Automática</h3>
+                        O DocScan Pro combina automaticamente a Frente e o Verso em um documento unificado perfeitamente alinhado, pronto para exportação para PDF oficial ou impressão.
+                    </li>
+                </ul>
+            </section>
+
+            <!-- 5. ASSINATURA TOUCH E CARIMBOS -->
+            <section id="pt-signature">
+                <h2><i data-lucide="pen-tool" size="22"></i> 5. Assinatura Digital Touch & Carimbos</h2>
+                <p>Assine contratos, propostas e termos diretamente no seu celular sem precisar imprimir e re-escanear.</p>
+
+                <div class="feature-grid">
+                    <div class="feature-item">
+                        <h3>Assinatura 1:1 na Tela</h3>
+                        <p>Desenhe sua assinatura com a ponta do dedo ou caneta stylus no painel interativo. Escolha entre tinta <strong>Azul Real</strong> (caneta esferográfica), <strong>Preto</strong> ou <strong>Vermelho</strong>. O app gera um carimbo transparente vetorial de alta definição.</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>Posicionamento & Rotação Livre</h3>
+                        <p>Arraste a assinatura para a linha de assinatura do documento. Use gestos de pinça ou os controles de canto para redimensionar e rotacionar no ângulo desejado.</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>Carimbos Oficiais Prontos</h3>
+                        <p>Insira carimbos pré-formatados com um clique: <strong>"PAGO"</strong>, <strong>"APROVADO"</strong>, <strong>"URGENTE"</strong>, <strong>"CÓPIA CONFORME"</strong> e <strong>"RECEBIDO"</strong> com data e hora automática.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 6. TARJAS DE SEGURANÇA E CENSURA -->
+            <section id="pt-redact">
+                <h2><i data-lucide="shield" size="22"></i> 6. Tarjas de Segurança, Desfoque e Marcadores</h2>
+                <p>Proteja dados confidenciais antes de compartilhar documentos sensíveis (em conformidade com a LGPD).</p>
+
+                <div class="feature-grid">
+                    <div class="feature-item">
+                        <h3>Tarja Preta (Confidencial)</h3>
+                        <p>Desenhe faixas opacas pretas para ocultar dados pessoais como CPF, dados bancários, senhas ou assinaturas de terceiros.</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>Desfoque / Efeito Mosaico</h3>
+                        <p>Desfoca rostos em fotos de crachás, placas de veículos ou textos secundários sem deixar uma mancha sólida.</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>Marcador de Texto Colorido</h3>
+                        <p>Destaque termos-chave, valores fiscais, prazos contratuais e cláusulas importantes em amarelo fluorescente, verde ou azul translúcido.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 7. OCR INTELIGÊNCIA ARTIFICIAL -->
+            <section id="pt-ocr">
+                <h2><i data-lucide="file-text" size="22"></i> 7. Extração de Texto Inteligente (OCR IA)</h2>
+                <p>Converta imagens em texto pesquisável e editável em segundos.</p>
+
+                <ul class="step-list">
+                    <li>
+                        <h3>Ative o OCR</h3>
+                        No visualizador do documento, toque no botão <strong>"Extrair Texto (OCR)"</strong>.
+                    </li>
+                    <li>
+                        <h3>Processamento Rápido</h3>
+                        Nossa engine reconhece textos em Português, Inglês e Espanhol com alta precisão, mesmo em impressões de baixa qualidade.
+                    </li>
+                    <li>
+                        <h3>Copie ou Exporte</h3>
+                        Copie trechos específicos para a área de transferência, exporte um arquivo de texto (.txt) ou use o texto para buscas rápidas.
+                    </li>
+                </ul>
+
+                <div class="highlight-box tip">
+                    <strong>🎁 20 Créditos Gratuitos para IA:</strong> Ao criar sua conta Google, você ganha 20 créditos para experimentar o OCR por Inteligência Artificial sem custos.
+                </div>
+
+                <div class="highlight-box warning">
+                    <strong>⚠️ Transparência Total de Preços:</strong> Todos os recursos de escaneamento, recorte com lupa, filtros avançados, assinatura touch, carimbos, tarjas de segurança, geração de PDFs, impressão térmica e sincronização com Google Drive são <strong>100% GRATUITOS e ILIMITADOS</strong>.
+                    <br><br>
+                    <strong>Os pagamentos (créditos) destinam-se EXCLUSIVAMENTE ao uso de Inteligência Artificial (OCR IA)</strong>, servindo unicamente para cobrir os custos de processamento em servidores de alta capacidade para os modelos de reconhecimento de texto. Novos pacotes de créditos podem ser adquiridos via <strong>PIX ou PayPal (Cartão de Crédito Internacional)</strong> com liberação instantânea no menu "Comprar Créditos".
+                </div>
+            </section>
+
+            <!-- 8. LEITOR DE BOLETOS FEBRABAN E CÓDIGOS -->
+            <section id="pt-barcode">
+                <h2><i data-lucide="scan-barcode" size="22"></i> 8. Leitor de Boletos Bancários (Febraban) e QR Codes</h2>
+                <p>Agilize seus pagamentos sem errar nenhum número da linha digitável!</p>
+
+                <div class="feature-grid">
+                    <div class="feature-item">
+                        <h3>Leitor de Código de Barras de Boletos</h3>
+                        <p>Aponte a câmera para o código de barras de qualquer boleto brasileiro. O sistema decodifica a faixa Febraban em milissegundos e extrai a <strong>Linha Digitável de 47 ou 48 dígitos</strong>, o <strong>valor do boleto</strong> e a <strong>data de vencimento</strong>.</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>Copiar Linha Digitável</h3>
+                        <p>Toque em "Copiar Código" e cole diretamente no aplicativo do seu banco (Nubank, Itaú, Bradesco, Banco do Brasil, Santander, Caixa, etc.).</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>Leitor de QR Code & PIX</h3>
+                        <p>Decodifica instantaneamente QR Codes de pagamento PIX, URLs de nota fiscal eletrônica (NFC-e) e links da web.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 9. IMPRESSÃO TÉRMICA DIRETA -->
+            <section id="pt-thermal">
+                <h2><i data-lucide="printer" size="22"></i> 9. Impressão Térmica Direta (Bobinas 80mm / 58mm)</h2>
+                <p>Imprima recibos, comprovantes e pedidos diretamente em impressoras térmicas de cupom (ex: Bematech MP-4200 TH, Elgin i9, Epson TM-T20).</p>
+
+                <ul class="step-list">
+                    <li>
+                        <h3>Selecione "Imprimir Cupom"</h3>
+                        No menu de exportação de qualquer documento ou extrato, selecione a opção de Impressão Térmica.
+                    </li>
+                    <li>
+                        <h3>Formatação Especial 80mm / 58mm</h3>
+                        O DocScan Pro formata a folha com largura contínua de 80mm ou 58mm, eliminando quebras de margem indesejadas e fontes distorcidas.
+                    </li>
+                    <li>
+                        <h3>Envio para a Impressora</h3>
+                        O comando é enviado diretamente via fila de impressão do sistema operacional ou CUPS no Linux com suporte a corte de papel automático.
+                    </li>
+                </ul>
+            </section>
+
+            <!-- 10. MÚLTIPLAS PÁGINAS E EXPORTAÇÃO PDF -->
+            <section id="pt-pdf">
+                <h2><i data-lucide="layers" size="22"></i> 10. Múltiplas Páginas & Exportação PDF</h2>
+                <p>Organize lotes inteiros de documentos em um único PDF compacto e profissional.</p>
+
+                <div class="feature-grid">
+                    <div class="feature-item">
+                        <h3>Lote Multipage</h3>
+                        <p>Escaneie 5, 10, 20 ou mais páginas consecutivas. A grade de miniaturas permite reordenar páginas arrastando, girar páginas individuais ou excluir folhas indesejadas.</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>Geração PDF Client-Side</h3>
+                        <p>O arquivo PDF é montado diretamente na memória do seu dispositivo. Escolha o nível de compressão (Alta Resolução para impressão ou Compactado para envio por e-mail e WhatsApp).</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>Compartilhamento Rápido</h3>
+                        <p>Toque no ícone de compartilhamento nativo para enviar diretamente para o WhatsApp, Telegram, Gmail ou salvar nos seus arquivos locais.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 11. GOOGLE DRIVE -->
+            <section id="pt-drive">
+                <h2><i data-lucide="cloud" size="22"></i> 11. Sincronização em Nuvem com Google Drive</h2>
+                <p>Seus documentos protegidos e acessíveis em qualquer dispositivo sem consumir espaço desnecessário no celular.</p>
+
+                <ul class="step-list">
+                    <li>
+                        <h3>Conecte sua Conta Google</h3>
+                        Faça login no botão do topo com sua conta Google oficial. A autenticação utiliza o protocolo seguro Google OAuth 2.0.
+                    </li>
+                    <li>
+                        <h3>Exportação Direta com 1 Toque</h3>
+                        Ao finalizar um scan, toque no botão <strong>"Salvar no Google Drive"</strong>. O documento será enviado para a pasta exclusiva <code>DocScan Pro</code> criada no seu próprio Drive.
+                    </li>
+                    <li>
+                        <h3>Privacidade Total</h3>
+                        Nossos servidores nunca acessam seus outros arquivos do Drive e não retêm cópias permanentes dos seus documentos.
+                    </li>
+                </ul>
+            </section>
+
+            <!-- 12. PASTAS COM PIN E PWA -->
+            <section id="pt-folders">
+                <h2><i data-lucide="lock" size="22"></i> 12. Pastas Seguras com PIN & Instalação PWA</h2>
+                <p>Mantenha sua vida digital organizada e protegida de curiosos.</p>
+
+                <div class="feature-grid">
+                    <div class="feature-item">
+                        <h3>Cofre com PIN de 4 Dígitos</h3>
+                        <p>Crie pastas protegidas por senha (PIN). Ideal para contratos sigilosos, holerites, extratos bancários e documentos fiscais.</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>Instale como Aplicativo (PWA)</h3>
+                        <p>No Chrome ou Safari, toque em "Adicionar à Tela de Início". O DocScan Pro funcionará como um aplicativo nativo completo, em tela cheia e com acesso rápido pelo ícone no seu celular.</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>Modo 100% Offline</h3>
+                        <p>A captura de fotos, corte com lupa, aplicação de filtros, assinatura e geração de PDFs funcionam normalmente mesmo em locais sem sinal de internet.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- ENGLISH CONTENT -->
+        <div id="contentEn" style="display: none;">
+            <!-- QUICK NAV BAR -->
+            <div class="toc-bar">
+                <a href="#en-capture" class="toc-chip"><i data-lucide="camera" size="14"></i> Camera & Capture</a>
+                <a href="#en-crop" class="toc-chip"><i data-lucide="crop" size="14"></i> Edge Crop & Loupe</a>
+                <a href="#en-filters" class="toc-chip"><i data-lucide="sliders" size="14"></i> Filters & Adjustments</a>
+                <a href="#en-idcard" class="toc-chip"><i data-lucide="credit-card" size="14"></i> 2-in-1 ID Card Mode</a>
+                <a href="#en-signature" class="toc-chip"><i data-lucide="pen-tool" size="14"></i> Signature & Stamps</a>
+                <a href="#en-redact" class="toc-chip"><i data-lucide="shield" size="14"></i> Redaction & Blur</a>
+                <a href="#en-ocr" class="toc-chip"><i data-lucide="file-text" size="14"></i> AI Text OCR</a>
+                <a href="#en-barcode" class="toc-chip"><i data-lucide="scan-barcode" size="14"></i> Barcode & Invoices</a>
+                <a href="#en-thermal" class="toc-chip"><i data-lucide="printer" size="14"></i> Thermal POS Print</a>
+                <a href="#en-pdf" class="toc-chip"><i data-lucide="layers" size="14"></i> Multi-Page PDF</a>
+                <a href="#en-drive" class="toc-chip"><i data-lucide="cloud" size="14"></i> Google Drive</a>
+                <a href="#en-folders" class="toc-chip"><i data-lucide="lock" size="14"></i> PIN Folders & PWA</a>
+            </div>
+
+            <!-- 1. HD CAMERA & AUTO-CAPTURE -->
+            <section id="en-capture">
+                <h2><i data-lucide="camera" size="22"></i> 1. HD Camera & Intelligent Auto-Capture</h2>
+                <p>DocScan Pro taps directly into your mobile device or tablet's high-definition camera sensor, delivering sharp focus and maximum resolution for crystal-clear text readability.</p>
+                
+                <ul class="step-list">
+                    <li>
+                        <h3>Start a New Scan</h3>
+                        Tap the floating central camera button on the main dashboard. The real-time viewfinder will open instantly.
+                    </li>
+                    <li>
+                        <h3>Intelligent Auto-Capture</h3>
+                        Hold the camera steady perpendicular to the document on a flat, contrasting background. As soon as the app detects paper stability and sharp contours, it takes the shot automatically with an authentic camera shutter sound.
+                    </li>
+                    <li>
+                        <h3>Viewfinder Controls</h3>
+                        Toggle the <strong>Torch / Flashlight</strong> in low-light environments, switch between front and rear cameras, or switch between Automatic and Manual shutter modes.
+                    </li>
+                    <li>
+                        <h3>Gallery & File Upload</h3>
+                        Already took a photo or received a PDF/image via WhatsApp or email? Tap the gallery button to import any existing file.
+                    </li>
+                </ul>
+
+                <div class="highlight-box tip">
+                    <strong>💡 Pro Tip:</strong> Place your paper on a dark or high-contrast background (such as white paper on a wooden or dark surface). This helps the contour engine lock onto all 4 corners instantly with 100% accuracy.
+                </div>
+            </section>
+
+            <!-- 2. EDGE CROP WITH MAGNIFIER -->
+            <section id="en-crop">
+                <h2><i data-lucide="crop" size="22"></i> 2. Edge Detection with Precision Magnifying Loupe</h2>
+                <p>No more fingers blocking the document corner when you adjust crop boundaries!</p>
+
+                <div class="feature-grid">
+                    <div class="feature-item">
+                        <h3>Real-Time Floating Loupe <span class="tag">EXCLUSIVE</span></h3>
+                        <p>When you touch and drag any of the 4 purple corner handles, an enlarged magnifying loupe appears dynamically <strong>positioned above your fingertip</strong>, allowing pixel-perfect alignment with the paper's physical edge.</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>3D Perspective Flattening</h3>
+                        <p>Even if the photo was taken from an angle or tilted perspective, our computer vision engine unwarps and flattens the page as though scanned on a high-end flatbed scanner.</p>
+                    </div>
+                </div>
+
+                <div class="highlight-box">
+                    <strong>Helpful Editor Shortcuts:</strong>
+                    <br>• <strong>Full Screen / Expand:</strong> Resets crop boundaries to cover the entire photo frame.
+                    <br>• <strong>Auto-Detect:</strong> Recalculates automatic contour points at any moment.
+                </div>
+            </section>
+
+            <!-- 3. FILTERS & FINE TUNING -->
+            <section id="en-filters">
+                <h2><i data-lucide="sliders" size="22"></i> 3. Professional Filters & Fine Adjustments</h2>
+                <p>Transform casual smartphone snaps into formal, high-contrast, clean documents ready for business and government submissions.</p>
+
+                <div class="feature-grid">
+                    <div class="feature-item">
+                        <h3>Magic Wand <span class="tag">MOST POPULAR</span></h3>
+                        <p>Our proprietary filter removes grey backgrounds and hand shadows while intensifying ink contrast for unmatched clarity.</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>Document B&W (Sauvola)</h3>
+                        <p>State-of-the-art adaptive binarization. Turns the paper pure white (#FFFFFF) and text pure black (#000000). Perfect for invoices, receipts, and contracts.</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>Grayscale</h3>
+                        <p>Converts to smooth grayscale tones, preserving ID photos, notary stamps, and soft photographic gradients with pristine fidelity.</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>Original & Vibrant Color</h3>
+                        <p>Preserves original photo colors with subtle contrast enhancement for color certificates, diagrams, and illustrations.</p>
+                    </div>
+                </div>
+
+                <div class="highlight-box">
+                    <strong>Manual Sliders:</strong> Fine-tune <strong>Brightness</strong>, <strong>Contrast</strong>, <strong>Sharpening</strong>, and rotate the page in <strong>90° increments</strong> using the bottom adjustment bar.
+                </div>
+            </section>
+
+            <!-- 4. 2-IN-1 ID CARD MODE -->
+            <section id="en-idcard">
+                <h2><i data-lucide="credit-card" size="22"></i> 4. 2-in-1 ID Card Mode (Front & Back)</h2>
+                <p>Scan driver's licenses, national ID cards, badges, or business cards with Front and Back combined onto a single standard sheet.</p>
+
+                <ul class="step-list">
+                    <li>
+                        <h3>Select "ID Card" Mode</h3>
+                        In the camera viewfinder or document creation menu, select <strong>"ID Card (Front & Back)"</strong>.
+                    </li>
+                    <li>
+                        <h3>Capture Front Side</h3>
+                        Align the front of your ID inside the on-screen card guide and capture. Adjust the edges using the magnifying loupe.
+                    </li>
+                    <li>
+                        <h3>Capture Back Side</h3>
+                        Flip the physical card and capture the reverse side within the matching frame.
+                    </li>
+                    <li>
+                        <h3>Automatic Composition</h3>
+                        DocScan Pro automatically merges both sides side-by-side or stacked on a single clean A4 page, ready for official PDF submission or printing.
+                    </li>
+                </ul>
+            </section>
+
+            <!-- 5. TOUCH SIGNATURE & STAMPS -->
+            <section id="en-signature">
+                <h2><i data-lucide="pen-tool" size="22"></i> 5. Touch Digital Signature & Official Stamps</h2>
+                <p>Sign agreements, employment forms, and receipts directly on your touchscreen without printing and rescanning.</p>
+
+                <div class="feature-grid">
+                    <div class="feature-item">
+                        <h3>1:1 On-Screen Signature</h3>
+                        <p>Draw your signature naturally using your finger or a stylus. Choose between <strong>Royal Blue</strong> (ballpoint pen), <strong>Black</strong>, or <strong>Red</strong> ink. Creates a crisp, transparent vector overlay.</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>Freeform Placement & Rotation</h3>
+                        <p>Drag your signature precisely over the document's signature line. Use pinch-to-zoom or corner handles to resize and rotate to the exact angle needed.</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>Pre-Built Official Stamps</h3>
+                        <p>Apply instant professional stamps: <strong>"PAID"</strong>, <strong>"APPROVED"</strong>, <strong>"URGENT"</strong>, <strong>"CERTIFIED COPY"</strong>, and <strong>"RECEIVED"</strong> with automatic date & time stamps.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 6. REDACTION & PRIVACY -->
+            <section id="en-redact">
+                <h2><i data-lucide="shield" size="22"></i> 6. Security Redaction, Blurring & Highlighters</h2>
+                <p>Safeguard confidential information before sharing sensitive paperwork (GDPR & LGPD compliant).</p>
+
+                <div class="feature-grid">
+                    <div class="feature-item">
+                        <h3>Blackout Redaction Bar</h3>
+                        <p>Draw solid black bars to permanently obscure sensitive personal data, such as Social Security / Tax IDs, bank account numbers, or confidential clauses.</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>Gaussian Blur / Pixelate</h3>
+                        <p>Blur faces on badges, vehicle license plates, or secondary background details without leaving harsh solid boxes.</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>Color Highlighter Marker</h3>
+                        <p>Emphasize key contract clauses, due dates, and payment terms using translucent fluorescent yellow, green, or blue markers.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 7. AI TEXT RECOGNITION (OCR) -->
+            <section id="en-ocr">
+                <h2><i data-lucide="file-text" size="22"></i> 7. AI Optical Character Recognition (OCR)</h2>
+                <p>Convert scanned photos and receipts into editable, searchable digital text in seconds.</p>
+
+                <ul class="step-list">
+                    <li>
+                        <h3>Activate OCR</h3>
+                        In the document view, tap the <strong>"Extract Text (OCR)"</strong> button.
+                    </li>
+                    <li>
+                        <h3>High-Speed Recognition</h3>
+                        Our engine processes English, Portuguese, and Spanish with exceptional precision, even on low-contrast prints or crumpled receipts.
+                    </li>
+                    <li>
+                        <h3>Copy or Export</h3>
+                        Copy extracted paragraphs directly to your clipboard, export as a <code>.txt</code> file, or use the text for instant in-app searches.
+                    </li>
+                </ul>
+
+                <div class="highlight-box tip">
+                    <strong>🎁 20 Free AI Starting Credits:</strong> Signing in with your Google account grants you 20 complimentary credits to test AI OCR text recognition at no cost.
+                </div>
+
+                <div class="highlight-box warning">
+                    <strong>⚠️ 100% Transparent Pricing:</strong> All core scanning features, smart magnifier crop, advanced filters, touch digital signatures, official stamps, security redaction, PDF compilation, thermal POS printing, and Google Drive cloud sync are <strong>100% FREE and UNLIMITED</strong>.
+                    <br><br>
+                    <strong>Payments and credit packages are STRICTLY and EXCLUSIVELY for the use of Artificial Intelligence (AI OCR)</strong>, solely to cover cloud server computing costs for neural text recognition models. Additional credits can be purchased at any time via <strong>PayPal (International Cards) or PIX</strong> with instant delivery in the "Buy Credits" menu.
+                </div>
+            </section>
+
+            <!-- 8. BANK SLIP & BARCODE READER -->
+            <section id="en-barcode">
+                <h2><i data-lucide="scan-barcode" size="22"></i> 8. Barcode & Bank Slip Reader (Febraban)</h2>
+                <p>Never misread a 48-digit bank slip line again!</p>
+
+                <div class="feature-grid">
+                    <div class="feature-item">
+                        <h3>Brazilian Bank Slip Reader (Febraban)</h3>
+                        <p>Point the camera at any Brazilian bank slip barcode (boleto). The system decodes the Febraban line in milliseconds, extracting the <strong>47/48-digit digital line</strong>, <strong>amount</strong>, and <strong>due date</strong>.</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>One-Tap Clipboard Copy</h3>
+                        <p>Tap "Copy Code" and paste directly into your banking app without manual typing errors.</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>2D QR Code & PIX Scanner</h3>
+                        <p>Instantly reads PIX payment codes, e-invoice URLs (NFC-e), and standard web hyperlinks.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 9. THERMAL RECEIPT PRINTING -->
+            <section id="en-thermal">
+                <h2><i data-lucide="printer" size="22"></i> 9. Direct Thermal POS Printing (80mm / 58mm)</h2>
+                <p>Print receipts, tickets, and order slips directly to standard thermal roll printers (e.g., Bematech MP-4200 TH, Epson TM-T20, Elgin i9).</p>
+
+                <ul class="step-list">
+                    <li>
+                        <h3>Select "Thermal Print"</h3>
+                        In the document export menu, select the Thermal Print option.
+                    </li>
+                    <li>
+                        <h3>Optimized 80mm / 58mm Formatting</h3>
+                        DocScan Pro formats documents to fit continuous roll widths without awkward page breaks, margins, or distorted fonts.
+                    </li>
+                    <li>
+                        <h3>Send to POS Printer</h3>
+                        Jobs are dispatched directly through your OS print spooler or Linux CUPS service with automatic receipt cutting.
+                    </li>
+                </ul>
+            </section>
+
+            <!-- 10. MULTI-PAGE PDF EXPORT -->
+            <section id="en-pdf">
+                <h2><i data-lucide="layers" size="22"></i> 10. Multi-Page Batches & PDF Generation</h2>
+                <p>Compile entire multi-page documents into a single organized, lightweight PDF.</p>
+
+                <div class="feature-grid">
+                    <div class="feature-item">
+                        <h3>Batch Scanning</h3>
+                        <p>Scan 5, 10, 20 or more consecutive pages. The thumbnail manager lets you drag-and-drop to reorder, rotate individual sheets, or delete unwanted pages.</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>Client-Side PDF Compilation</h3>
+                        <p>PDFs are compiled entirely inside your device's memory. Choose between High Resolution (for printing) or Compact compression (for email/WhatsApp sharing).</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>Instant Native Sharing</h3>
+                        <p>Use your operating system's native share sheet to send directly to WhatsApp, Telegram, Gmail, or save to your local device files.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 11. GOOGLE DRIVE BACKUP -->
+            <section id="en-drive">
+                <h2><i data-lucide="cloud" size="22"></i> 11. Google Drive Cloud Backup & Sync</h2>
+                <p>Keep your vital documents backed up safely and accessible anywhere without cluttering internal phone storage.</p>
+
+                <ul class="step-list">
+                    <li>
+                        <h3>Connect your Google Account</h3>
+                        Sign in via Google OAuth 2.0 at the top of the app.
+                    </li>
+                    <li>
+                        <h3>One-Tap Cloud Export</h3>
+                        When saving a scan, tap <strong>"Save to Google Drive"</strong>. Your file will be organized inside a dedicated <code>DocScan Pro</code> folder in your own Google Drive.
+                    </li>
+                    <li>
+                        <h3>Zero Server Retention</h3>
+                        Our servers never inspect your personal cloud files and do not retain copies of your scanned documents.
+                    </li>
+                </ul>
+            </section>
+
+            <!-- 12. PIN PROTECTION & PWA -->
+            <section id="en-folders">
+                <h2><i data-lucide="lock" size="22"></i> 12. PIN-Protected Folders & Offline PWA</h2>
+                <p>Keep sensitive records confidential and access your scanner anywhere, even without Wi-Fi.</p>
+
+                <div class="feature-grid">
+                    <div class="feature-item">
+                        <h3>4-Digit PIN Folder Vault</h3>
+                        <p>Lock confidential folders behind a 4-digit security PIN. Ideal for payroll slips, tax forms, and medical records.</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>Install as a Native App (PWA)</h3>
+                        <p>On Chrome or Safari, select "Add to Home Screen". DocScan Pro launches as a standalone, fullscreen app from your home screen.</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>100% Offline Capability</h3>
+                        <p>Camera capture, magnifying loupe crop, Sauvola filters, touch signing, and local PDF export work seamlessly with zero internet connection.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- FOOTER -->
+        <footer>
+            <p>DocScan Pro © 2026 · 4U.IA.BR — <span id="footerDesc">Digitalização Inteligente e Produtividade Móvel</span></p>
         </footer>
     </div>
+
+    <script>
+        function setTutorialLang(lang) {
+            const isEn = lang === 'en';
+            document.getElementById('contentPt').style.display = isEn ? 'none' : 'block';
+            document.getElementById('contentEn').style.display = isEn ? 'block' : 'none';
+            document.documentElement.lang = isEn ? 'en' : 'pt-BR';
+
+            document.getElementById('langPtBtn').classList.toggle('active', !isEn);
+            document.getElementById('langEnBtn').classList.toggle('active', isEn);
+
+            document.getElementById('btnBackText').innerText = isEn ? 'Back to App' : 'Voltar ao App';
+            document.getElementById('headerTitle').innerText = isEn ? 'DocScan Pro — User Manual' : 'DocScan Pro — Manual do Usuário';
+            document.getElementById('footerDesc').innerText = isEn ? 'Intelligent Scanning & Mobile Productivity' : 'Digitalização Inteligente e Produtividade Móvel';
+
+            localStorage.setItem('docscan_tutorial_lang', lang);
+            lucide.createIcons();
+        }
+
+        // Initialize language
+        const urlParams = new URLSearchParams(window.location.search);
+        const langParam = urlParams.get('lang');
+        const savedLang = localStorage.getItem('docscan_tutorial_lang') || localStorage.getItem('docscan_lang') || localStorage.getItem('4u_legal_lang');
+
+        if (langParam === 'en' || (!langParam && savedLang === 'en')) {
+            setTutorialLang('en');
+        } else {
+            setTutorialLang('pt');
+        }
+
+        lucide.createIcons();
+    </script>
 </body>
 
 </html>
