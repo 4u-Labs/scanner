@@ -3413,17 +3413,6 @@ body.theme-light {
 /* ============================================
    PROTECTED FOLDERS & PIN MODAL
    ============================================ */
-.doc-item.folder.locked .folder-icon::after {
-    content: '🔒';
-    position: absolute;
-    top: -5px;
-    right: -5px;
-    font-size: 14px;
-    background: var(--bg-primary);
-    padding: 2px;
-    border-radius: 50%;
-    box-shadow: var(--shadow-sm);
-}
 
 .pin-modal {
     padding: 24px;
