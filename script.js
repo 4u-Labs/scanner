@@ -535,7 +535,7 @@ function updateSelectionBar() {
     if (state.selectMode && state.selectedItems.length > 0) {
         bar.classList.remove('hidden');
         header.classList.add('hidden');
-        $('selectedCount').textContent = `${state.selectedItems.length} selecionados`;
+        $('selectedCount').textContent = `${state.selectedItems.length} ${currentLang === 'en' ? 'selected' : 'selecionados'}`;
     } else {
         bar.classList.add('hidden');
         header.classList.remove('hidden');
@@ -544,7 +544,7 @@ function updateSelectionBar() {
 
 function updateFolderSelect() {
     const select = $('folderSelect');
-    let html = '<option value="root">Raiz</option>';
+    let html = `<option value="root">${currentLang === 'en' ? 'Root' : 'Raiz'}</option>`;
 
     state.folders.forEach(folder => {
         html += `<option value="${folder.id}">${folder.name}</option>`;
@@ -2615,15 +2615,18 @@ function downloadFile(data, fileName, mimeType) {
 // ============================================
 function openFolderModal(folder = null) {
     state.editingDocId = folder?.id || null;
-    $('folderModalTitle').textContent = folder ? 'Renomear Pasta' : 'Nova Pasta';
+    $('folderModalTitle').textContent = folder 
+        ? (t('rename_folder_title') || 'Renomear Pasta') 
+        : (t('new_folder_title') || 'Nova Pasta');
     $('folderNameInput').value = folder?.name || '';
+    $('folderNameInput').placeholder = t('new_folder_ph') || 'Nova pasta';
     openModal('folderModal');
 }
 
 async function saveFolder() {
     const name = $('folderNameInput').value.trim();
     if (!name) {
-        showToast('Digite um nome para a pasta', 'error');
+        showToast(t('enter_folder_name_error') || 'Digite um nome para a pasta', 'error');
         return;
     }
 
@@ -3425,7 +3428,47 @@ const I18N_DICT = {
         ocr_placeholder: "O texto extraído aparecerá aqui...",
         copy_text: "Copiar Texto",
         export_excel: "Exportar Excel (.xlsx)",
-        print_btn: "Imprimir"
+        print_btn: "Imprimir",
+        new_folder_title: "Nova Pasta",
+        rename_folder_title: "Renomear Pasta",
+        folder_name_label: "Nome da pasta",
+        new_folder_ph: "Nova pasta",
+        enter_folder_name_error: "Digite um nome para a pasta",
+        stats: "Estatísticas",
+        stat_docs: "Documentos",
+        stat_folders: "Pastas",
+        stat_favs: "Favoritos",
+        stat_pages: "Páginas",
+        stat_storage: "Armazenamento usado",
+        settings: "Configurações",
+        appearance: "Aparência",
+        theme: "Tema",
+        theme_light: "Claro",
+        theme_dark: "Escuro",
+        theme_auto: "Auto",
+        image_quality: "Qualidade de Imagem",
+        compression_label: "Compressão (maior = melhor qualidade, maior tamanho)",
+        watermark: "Marca d'água",
+        add_watermark: "Adicionar marca d'água aos documentos",
+        watermark_text: "Texto da marca d'água",
+        autosave: "Auto-salvamento",
+        save_automatically: "Salvar automaticamente no dispositivo",
+        export_import_confirm: "Exportar todos os dados?\n\nOK = Exportar\nCancelar = Importar",
+        exporting_data: "Exportando dados...",
+        backup_exported_success: "Backup exportado com sucesso!",
+        backup_exported_error: "Erro ao exportar backup",
+        importing_data: "Importando dados...",
+        backup_imported_success: "Backup importado com sucesso!",
+        backup_imported_error: "Erro ao importar backup",
+        buy_credits: "Comprar Créditos",
+        payment_intro: "Escolha um pacote de créditos para continuar digitalizando e usando OCR ilimitado.",
+        credits_label: "Créditos",
+        most_popular: "MAIS POPULAR",
+        copy_code: "Copiar Código",
+        back_to_packages: "Voltar aos pacotes",
+        payment_approved: "Pagamento Aprovado!",
+        credits_added: "Seus créditos foram adicionados à sua conta.",
+        start_using: "Começar a usar"
     },
     en: {
         app_title: "DocScan Pro",
@@ -3526,7 +3569,47 @@ const I18N_DICT = {
         ocr_placeholder: "Extracted text will appear here...",
         copy_text: "Copy Text",
         export_excel: "Export to Excel (.xlsx)",
-        print_btn: "Print"
+        print_btn: "Print",
+        new_folder_title: "New Folder",
+        rename_folder_title: "Rename Folder",
+        folder_name_label: "Folder name",
+        new_folder_ph: "New folder",
+        enter_folder_name_error: "Enter a folder name",
+        stats: "Statistics",
+        stat_docs: "Documents",
+        stat_folders: "Folders",
+        stat_favs: "Favorites",
+        stat_pages: "Pages",
+        stat_storage: "Storage used",
+        settings: "Settings",
+        appearance: "Appearance",
+        theme: "Theme",
+        theme_light: "Light",
+        theme_dark: "Dark",
+        theme_auto: "Auto",
+        image_quality: "Image Quality",
+        compression_label: "Compression (higher = better quality, larger size)",
+        watermark: "Watermark",
+        add_watermark: "Add watermark to documents",
+        watermark_text: "Watermark text",
+        autosave: "Auto-save",
+        save_automatically: "Save automatically to device",
+        export_import_confirm: "Export all data?\n\nOK = Export\nCancel = Import",
+        exporting_data: "Exporting data...",
+        backup_exported_success: "Backup exported successfully!",
+        backup_exported_error: "Error exporting backup",
+        importing_data: "Importing data...",
+        backup_imported_success: "Backup imported successfully!",
+        backup_imported_error: "Error importing backup",
+        buy_credits: "Buy Credits",
+        payment_intro: "Choose a credit package to continue scanning and using unlimited OCR.",
+        credits_label: "Credits",
+        most_popular: "MOST POPULAR",
+        copy_code: "Copy Code",
+        back_to_packages: "Back to packages",
+        payment_approved: "Payment Approved!",
+        credits_added: "Your credits have been added to your account.",
+        start_using: "Start using"
     }
 };
 
@@ -4347,7 +4430,7 @@ function openMoveModal(type, id) {
     let html = `
         <div class="folder-list-item" onclick="moveToFolder('root')">
             <span class="folder-icon">🏠</span>
-            <span>Raiz</span>
+            <span>${currentLang === 'en' ? 'Root' : 'Raiz'}</span>
         </div>
     `;
 
@@ -4384,16 +4467,16 @@ async function moveToFolder(targetFolder) {
 
     closeModal('moveModal');
     updateUI();
-    showToast('Item movido com sucesso!', 'success');
+    showToast(currentLang === 'en' ? 'Item moved successfully!' : 'Item movido com sucesso!', 'success');
 }
 
 // ============================================
 // Bulk Actions
 // ============================================
 async function deleteSelected() {
-    if (!confirm(`Excluir ${state.selectedItems.length} itens?`)) return;
+    if (!confirm(currentLang === 'en' ? `Delete ${state.selectedItems.length} items?` : `Excluir ${state.selectedItems.length} itens?`)) return;
 
-    showLoading('Excluindo...');
+    showLoading(currentLang === 'en' ? 'Deleting...' : 'Excluindo...');
 
     for (const item of state.selectedItems) {
         const [type, id] = item.split('_');
@@ -4408,11 +4491,11 @@ async function deleteSelected() {
     state.selectMode = false;
     hideLoading();
     updateUI();
-    showToast('Itens excluídos', 'success');
+    showToast(currentLang === 'en' ? 'Items deleted' : 'Itens excluídos', 'success');
 }
 
 async function downloadSelected() {
-    showLoading('Preparando download...');
+    showLoading(currentLang === 'en' ? 'Preparing download...' : 'Preparando download...');
 
     for (const item of state.selectedItems) {
         const [type, id] = item.split('_');
@@ -4426,7 +4509,7 @@ async function downloadSelected() {
     }
 
     hideLoading();
-    showToast('Downloads iniciados', 'success');
+    showToast(currentLang === 'en' ? 'Downloads started' : 'Downloads iniciados', 'success');
 }
 
 async function generatePdfFromSelected() {
@@ -6297,7 +6380,7 @@ async function showStats() {
 // Backup/Export
 // ============================================
 async function showBackupOptions() {
-    const choice = confirm('Exportar todos os dados?\n\nOK = Exportar\nCancelar = Importar');
+    const choice = confirm(t('export_import_confirm') || 'Exportar todos os dados?\n\nOK = Exportar\nCancelar = Importar');
 
     if (choice) {
         await exportBackup();
@@ -6309,7 +6392,7 @@ async function showBackupOptions() {
 }
 
 async function exportBackup() {
-    showLoading('Exportando dados...');
+    showLoading(t('exporting_data') || 'Exportando dados...');
 
     try {
         const backup = {
@@ -6333,10 +6416,10 @@ async function exportBackup() {
         URL.revokeObjectURL(url);
 
         hideLoading();
-        showToast('Backup exportado com sucesso!', 'success');
+        showToast(t('backup_exported_success') || 'Backup exportado com sucesso!', 'success');
     } catch (error) {
         hideLoading();
-        showToast('Erro ao exportar backup', 'error');
+        showToast(t('backup_exported_error') || 'Erro ao exportar backup', 'error');
     }
 }
 
@@ -6349,14 +6432,14 @@ function importBackup() {
         const file = e.target.files[0];
         if (!file) return;
 
-        showLoading('Importando dados...');
+        showLoading(t('importing_data') || 'Importando dados...');
 
         try {
             const text = await file.text();
             const backup = JSON.parse(text);
 
             if (!backup.version || !backup.documents) {
-                throw new Error('Arquivo de backup inválido');
+                throw new Error(currentLang === 'en' ? 'Invalid backup file' : 'Arquivo de backup inválido');
             }
 
             // Restore data
@@ -6380,10 +6463,10 @@ function importBackup() {
             updateUI();
 
             hideLoading();
-            showToast('Backup importado com sucesso!', 'success');
+            showToast(t('backup_imported_success') || 'Backup importado com sucesso!', 'success');
         } catch (error) {
             hideLoading();
-            showToast('Erro ao importar backup', 'error');
+            showToast(t('backup_imported_error') || 'Erro ao importar backup', 'error');
         }
     };
 

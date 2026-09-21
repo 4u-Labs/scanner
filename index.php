@@ -843,7 +843,7 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
                             d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
                     </svg>
                 </button>
-                <h2 id="folderModalTitle">Nova Pasta</h2>
+                <h2 id="folderModalTitle" data-i18n="new_folder_title">Nova Pasta</h2>
                 <button id="saveFolderBtn" class="icon-btn primary">
                     <svg viewBox="0 0 24 24">
                         <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
@@ -852,8 +852,8 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
             </div>
             <div class="folder-form">
                 <div class="form-group">
-                    <label>Nome da pasta</label>
-                    <input type="text" id="folderNameInput" placeholder="Nova pasta">
+                    <label data-i18n="folder_name_label">Nome da pasta</label>
+                    <input type="text" id="folderNameInput" data-i18n-ph="new_folder_ph" placeholder="Nova pasta">
                 </div>
             </div>
         </div>
@@ -1169,68 +1169,68 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
                             d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
                     </svg>
                 </button>
-                <h2>Configurações</h2>
+                <h2 data-i18n="settings">Configurações</h2>
                 <div></div>
             </div>
             <div class="settings-content">
                 <div class="setting-group">
-                    <h3>Aparência</h3>
+                    <h3 data-i18n="appearance">Aparência</h3>
                     <div class="setting-item">
-                        <label>Tema</label>
+                        <label data-i18n="theme">Tema</label>
                         <div class="theme-buttons">
                             <button class="theme-btn" data-theme="light">
                                 <svg viewBox="0 0 24 24">
                                     <path
                                         d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0-.39.39-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0-.39.39-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0 .39-.39.39-1.03 0-1.41l-1.06-1.06zm1.06-10.96c.39-.39.39-1.03 0-1.41-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06zM7.05 18.36c.39-.39.39-1.03 0-1.41-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06z" />
                                 </svg>
-                                Claro
+                                <span data-i18n="theme_light">Claro</span>
                             </button>
                             <button class="theme-btn active" data-theme="dark">
                                 <svg viewBox="0 0 24 24">
                                     <path
                                         d="M9 2c-1.05 0-2.05.16-3 .46 4.06 1.27 7 5.06 7 9.54 0 4.48-2.94 8.27-7 9.54.95.3 1.95.46 3 .46 5.52 0 10-4.48 10-10S14.52 2 9 2z" />
                                 </svg>
-                                Escuro
+                                <span data-i18n="theme_dark">Escuro</span>
                             </button>
                             <button class="theme-btn" data-theme="auto">
                                 <svg viewBox="0 0 24 24">
                                     <path
                                         d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1z" />
                                 </svg>
-                                Auto
+                                <span data-i18n="theme_auto">Auto</span>
                             </button>
                         </div>
                     </div>
                 </div>
 
                 <div class="setting-group">
-                    <h3>Qualidade de Imagem</h3>
+                    <h3 data-i18n="image_quality">Qualidade de Imagem</h3>
                     <div class="setting-item">
-                        <label>Compressão (maior = melhor qualidade, maior tamanho)</label>
+                        <label data-i18n="compression_label">Compressão (maior = melhor qualidade, maior tamanho)</label>
                         <input type="range" id="qualityRange" min="50" max="100" value="90" step="5">
                         <span id="qualityValue">90%</span>
                     </div>
                 </div>
 
                 <div class="setting-group">
-                    <h3>Marca d'água</h3>
+                    <h3 data-i18n="watermark">Marca d'água</h3>
                     <div class="setting-item">
-                        <label>Adicionar marca d'água aos documentos</label>
+                        <label data-i18n="add_watermark">Adicionar marca d'água aos documentos</label>
                         <label class="switch">
                             <input type="checkbox" id="watermarkToggle">
                             <span class="slider"></span>
                         </label>
                     </div>
                     <div class="setting-item" id="watermarkTextGroup">
-                        <label>Texto da marca d'água</label>
+                        <label data-i18n="watermark_text">Texto da marca d'água</label>
                         <input type="text" id="watermarkText" placeholder="DocScan Pro">
                     </div>
                 </div>
 
                 <div class="setting-group">
-                    <h3>Auto-salvamento</h3>
+                    <h3 data-i18n="autosave">Auto-salvamento</h3>
                     <div class="setting-item">
-                        <label>Salvar automaticamente no dispositivo</label>
+                        <label data-i18n="save_automatically">Salvar automaticamente no dispositivo</label>
                         <label class="switch">
                             <input type="checkbox" id="autoSaveToggle" checked>
                             <span class="slider"></span>
@@ -1251,7 +1251,7 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
                             d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
                     </svg>
                 </button>
-                <h2>Estatísticas</h2>
+                <h2 data-i18n="stats">Estatísticas</h2>
                 <div></div>
             </div>
             <div class="stats-content">
@@ -1259,35 +1259,35 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
                     <div class="stat-icon">📄</div>
                     <div class="stat-info">
                         <div class="stat-value" id="totalDocs">0</div>
-                        <div class="stat-label">Documentos</div>
+                        <div class="stat-label" data-i18n="stat_docs">Documentos</div>
                     </div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon">📁</div>
                     <div class="stat-info">
                         <div class="stat-value" id="totalFolders">0</div>
-                        <div class="stat-label">Pastas</div>
+                        <div class="stat-label" data-i18n="stat_folders">Pastas</div>
                     </div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon">⭐</div>
                     <div class="stat-info">
                         <div class="stat-value" id="totalFavorites">0</div>
-                        <div class="stat-label">Favoritos</div>
+                        <div class="stat-label" data-i18n="stat_favs">Favoritos</div>
                     </div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon">📊</div>
                     <div class="stat-info">
                         <div class="stat-value" id="totalPages">0</div>
-                        <div class="stat-label">Páginas</div>
+                        <div class="stat-label" data-i18n="stat_pages">Páginas</div>
                     </div>
                 </div>
                 <div class="stat-card full-width">
                     <div class="stat-icon">💾</div>
                     <div class="stat-info">
                         <div class="stat-value" id="storageUsed">0 KB</div>
-                        <div class="stat-label">Armazenamento usado</div>
+                        <div class="stat-label" data-i18n="stat_storage">Armazenamento usado</div>
                     </div>
                 </div>
             </div>
