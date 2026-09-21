@@ -374,9 +374,7 @@ function setupEventListeners() {
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         state.deferredPrompt = e;
-        $('menuInstall')?.classList.remove('hidden');
-        $('installDivider')?.classList.remove('hidden');
-        $('mainInstallBtn')?.classList.remove('hidden');
+        window.deferredPrompt = e;
     });
 
     $('menuInstall').onclick = () => {
@@ -386,25 +384,21 @@ function setupEventListeners() {
 
     window.addEventListener('appinstalled', () => {
         state.deferredPrompt = null;
+        window.deferredPrompt = null;
+        document.documentElement.classList.add('is-standalone');
         $('menuInstall')?.classList.add('hidden');
         $('installDivider')?.classList.add('hidden');
         $('mainInstallBtn')?.classList.add('hidden');
         console.log('App installed');
     });
 
-    // Standalone check & iOS support on init
+    // Standalone check on init
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
     if (isStandalone) {
+        document.documentElement.classList.add('is-standalone');
         $('mainInstallBtn')?.classList.add('hidden');
         $('menuInstall')?.classList.add('hidden');
         $('installDivider')?.classList.add('hidden');
-    } else {
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-        if (isIOS) {
-            $('mainInstallBtn')?.classList.remove('hidden');
-            $('menuInstall')?.classList.remove('hidden');
-            $('installDivider')?.classList.remove('hidden');
-        }
     }
 
     // Crop Handles
@@ -412,29 +406,57 @@ function setupEventListeners() {
 }
 
 // ============================================
-// PWA Installation Trigger
+// PWA Installation & Guide
 // ============================================
+function showInstallGuideModal() {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const isAndroid = /Android/.test(navigator.userAgent);
+    const guideBody = $('installGuideBody');
+    const dict = (typeof I18N_DICT !== 'undefined' && I18N_DICT[currentLang]) ? I18N_DICT[currentLang] : I18N_DICT.pt;
+
+    let instructions = '';
+    if (isIOS) {
+        instructions = dict.install_guide_ios;
+    } else if (isAndroid) {
+        instructions = dict.install_guide_android;
+    } else {
+        instructions = dict.install_guide_desktop;
+    }
+
+    if (guideBody) {
+        guideBody.innerHTML = `
+            <p style="margin-bottom: 14px; font-weight: 500;">${dict.install_guide_intro}</p>
+            <div style="background: var(--bg-tertiary); padding: 14px 16px; border-radius: var(--radius-md); border: 1px solid var(--border-color); line-height: 1.8;">
+                ${instructions}
+            </div>
+        `;
+    }
+    openModal('installModal');
+}
+window.showInstallGuideModal = showInstallGuideModal;
+
 async function triggerPwaInstall() {
     if (typeof triggerHaptic === 'function') triggerHaptic('medium');
-    if (state.deferredPrompt) {
-        state.deferredPrompt.prompt();
-        const { outcome } = await state.deferredPrompt.userChoice;
-        console.log(`User response to the install prompt: ${outcome}`);
-        state.deferredPrompt = null;
-        $('menuInstall')?.classList.add('hidden');
-        $('installDivider')?.classList.add('hidden');
-        $('mainInstallBtn')?.classList.add('hidden');
-    } else {
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-        if (isIOS) {
-            alert(currentLang === 'en' 
-                ? 'To install this app on your iPhone/iPad, tap Share (⎋) in Safari and choose "Add to Home Screen".' 
-                : 'Para instalar este app no seu iPhone/iPad, toque em Compartilhar (⎋) no Safari e escolha "Adicionar à Tela de Início".');
-        } else {
-            alert(currentLang === 'en' 
-                ? 'To install this app, open your browser menu (⋮) and tap "Install app" or "Add to Home screen".' 
-                : 'Para instalar este app, abra o menu do navegador (⋮) e toque em "Instalar aplicativo" ou "Adicionar à tela inicial".');
+    const promptEvent = window.deferredPrompt || (window.state && window.state.deferredPrompt);
+    if (promptEvent) {
+        try {
+            promptEvent.prompt();
+            const { outcome } = await promptEvent.userChoice;
+            console.log(`User response to the install prompt: ${outcome}`);
+            if (outcome === 'accepted') {
+                window.deferredPrompt = null;
+                if (window.state) window.state.deferredPrompt = null;
+                document.documentElement.classList.add('is-standalone');
+                $('menuInstall')?.classList.add('hidden');
+                $('installDivider')?.classList.add('hidden');
+                $('mainInstallBtn')?.classList.add('hidden');
+            }
+        } catch (e) {
+            console.warn('Install prompt error, showing guide:', e);
+            showInstallGuideModal();
         }
+    } else {
+        showInstallGuideModal();
     }
 }
 window.triggerPwaInstall = triggerPwaInstall;
@@ -3408,6 +3430,11 @@ const I18N_DICT = {
         menu_about: "Sobre",
         menu_install: "Instalar App",
         install_app: "Instalar App",
+        install_guide_title: "Instalar DocScan Pro",
+        install_guide_intro: "Instale o DocScan Pro para abrir em tela cheia como um aplicativo nativo, com carregamento ultrarrápido e acesso offline:",
+        install_guide_android: "1. Toque no menu de <strong>três pontos (⋮)</strong> no canto superior direito do Chrome.<br>2. Toque em <strong>\"Instalar aplicativo\"</strong> ou <strong>\"Adicionar à tela inicial\"</strong>.<br>3. Toque em <strong>Instalar</strong> para confirmar.",
+        install_guide_ios: "1. No Safari, toque no botão <strong>Compartilhar</strong> (ícone ⎋ na barra inferior).<br>2. Role para baixo e toque em <strong>\"Adicionar à Tela de Início\"</strong> (➕).<br>3. Toque em <strong>\"Adicionar\"</strong> no canto superior direito.",
+        install_guide_desktop: "1. Clique no ícone de instalação (⤓ ou tela) na barra de endereços do seu navegador.<br>2. Ou abra o menu (⋮) e clique em <strong>\"Instalar DocScan Pro\"</strong>.",
         camera_live: "Câmera ao Vivo (4K)",
         batch_mode: "Modo Lote (Várias Págs)",
         gallery: "Galeria",
@@ -3550,6 +3577,11 @@ const I18N_DICT = {
         menu_about: "About",
         menu_install: "Install App",
         install_app: "Install App",
+        install_guide_title: "Install DocScan Pro",
+        install_guide_intro: "Install DocScan Pro to open in fullscreen as a native app with ultra-fast loading and offline access:",
+        install_guide_android: "1. Tap the <strong>three dots menu (⋮)</strong> at the top right of Chrome.<br>2. Tap <strong>\"Install app\"</strong> or <strong>\"Add to Home screen\"</strong>.<br>3. Tap <strong>Install</strong> to confirm.",
+        install_guide_ios: "1. In Safari, tap the <strong>Share</strong> button (⎋ icon in the bottom bar).<br>2. Scroll down and tap <strong>\"Add to Home Screen\"</strong> (➕).<br>3. Tap <strong>\"Add\"</strong> at the top right.",
+        install_guide_desktop: "1. Click the install icon (⤓ or screen) in your browser address bar.<br>2. Or open the menu (⋮) and click <strong>\"Install DocScan Pro\"</strong>.",
         camera_live: "Live Camera (4K)",
         batch_mode: "Batch Mode (Multi-Page)",
         gallery: "Gallery",

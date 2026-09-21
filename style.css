@@ -375,6 +375,14 @@ body {
     display: none;
 }
 
+/* Ocultar botões de instalação se já estiver rodando como PWA instalado */
+.is-standalone .main-install-btn,
+.is-standalone #mainInstallBtn,
+.is-standalone #menuInstall,
+.is-standalone #installDivider {
+    display: none !important;
+}
+
 .main-install-btn {
     display: inline-flex;
     align-items: center;

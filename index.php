@@ -35,6 +35,18 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
     <base href="<?php echo htmlspecialchars($baseDir); ?>">
     <link rel="stylesheet" href="style.css?v=<?php echo $v; ?>">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        // Early capture of PWA beforeinstallprompt & standalone detection
+        window.deferredPrompt = null;
+        window.addEventListener('beforeinstallprompt', function(e) {
+            e.preventDefault();
+            window.deferredPrompt = e;
+            if (window.state) window.state.deferredPrompt = e;
+        });
+        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+            document.documentElement.classList.add('is-standalone');
+        }
+    </script>
 </head>
 
 <body>
@@ -183,7 +195,7 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
                     <span>Início</span>
                 </button>
             </nav>
-            <button id="mainInstallBtn" class="main-install-btn hidden" onclick="triggerPwaInstall()">
+            <button id="mainInstallBtn" class="main-install-btn" onclick="triggerPwaInstall()">
                 <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
                     <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
                 </svg>
@@ -347,12 +359,12 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
                     </svg>
                     <span>Sobre</span>
                 </button>
-                <div class="menu-divider hidden" id="installDivider"></div>
-                <button id="menuInstall" class="menu-item hidden">
+                <div class="menu-divider" id="installDivider"></div>
+                <button id="menuInstall" class="menu-item" onclick="triggerPwaInstall(); toggleSideMenu(false);">
                     <svg viewBox="0 0 24 24">
                         <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
                     </svg>
-                    <span>Instalar App</span>
+                    <span data-i18n="menu_install">Instalar App</span>
                 </button>
             </nav>
             <div class="side-menu-footer">
@@ -1636,6 +1648,25 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
                 <div class="stamp-preview-wrapper">
                     <canvas id="stampPreviewCanvas"></canvas>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Guia de Instalação -->
+    <div id="installModal" class="modal" style="z-index: 350;">
+        <div class="modal-content" style="max-width: 440px; border-radius: var(--radius-xl); background: var(--bg-secondary); padding: 22px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); border: 1px solid var(--border-color);">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 22px;">📲</span>
+                    <h3 style="margin: 0; font-size: 17px; font-weight: 700; color: var(--text-primary);" data-i18n="install_guide_title">Instalar DocScan Pro</h3>
+                </div>
+                <button class="icon-btn" onclick="closeModal('installModal')" aria-label="Fechar" style="font-size: 20px; background: transparent; border: none; color: var(--text-secondary); cursor: pointer;">&times;</button>
+            </div>
+            <div id="installGuideBody" style="text-align: left; font-size: 14px; line-height: 1.6; color: var(--text-secondary);">
+                <!-- Preenchido via script.js -->
+            </div>
+            <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
+                <button class="btn btn-primary" onclick="closeModal('installModal')" style="width: 100%; justify-content: center; padding: 10px; border-radius: var(--radius-md); font-weight: 600; cursor: pointer;" data-i18n="close">Entendi</button>
             </div>
         </div>
     </div>
