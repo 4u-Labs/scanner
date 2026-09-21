@@ -28,7 +28,8 @@ const state = {
         quality: 90,
         watermark: false,
         watermarkText: 'DocScan Pro',
-        autoSave: true
+        autoSave: true,
+        shutterSound: true
     },
     tutorialShown: false,
     viewerZoom: 1,
@@ -190,6 +191,9 @@ async function loadData() {
         state.settings = { ...state.settings, ...appSettings.value };
         state.theme = appSettings.value.theme || 'dark';
         applyTheme(state.theme);
+        if ($('shutterSoundToggle')) {
+            $('shutterSoundToggle').checked = state.settings.shutterSound !== false;
+        }
     }
 
     // Check if tutorial was shown
@@ -816,6 +820,8 @@ function handleImageCapture(event) {
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
+    playShutterSound();
+    triggerHaptic('medium');
     closeModal('captureModal');
 
     const file = files[0];
@@ -3436,6 +3442,8 @@ const I18N_DICT = {
         install_guide_ios: "1. No Safari, toque no botão <strong>Compartilhar</strong> (ícone ⎋ na barra inferior).<br>2. Role para baixo e toque em <strong>\"Adicionar à Tela de Início\"</strong> (➕).<br>3. Toque em <strong>\"Adicionar\"</strong> no canto superior direito.",
         install_guide_desktop: "1. Clique no ícone de instalação (⤓ ou tela) na barra de endereços do seu navegador.<br>2. Ou abra o menu (⋮) e clique em <strong>\"Instalar DocScan Pro\"</strong>.",
         camera_live: "Câmera ao Vivo (4K)",
+        camera_sound: "Som da Câmera",
+        shutter_sound_label: "Som de obturador ao capturar fotos",
         batch_mode: "Modo Lote (Várias Págs)",
         gallery: "Galeria",
         id_card_mode: "🪪 Modo RG / CNH (2 Lados em 1 A4)",
@@ -3583,6 +3591,8 @@ const I18N_DICT = {
         install_guide_ios: "1. In Safari, tap the <strong>Share</strong> button (⎋ icon in the bottom bar).<br>2. Scroll down and tap <strong>\"Add to Home Screen\"</strong> (➕).<br>3. Tap <strong>\"Add\"</strong> at the top right.",
         install_guide_desktop: "1. Click the install icon (⤓ or screen) in your browser address bar.<br>2. Or open the menu (⋮) and click <strong>\"Install DocScan Pro\"</strong>.",
         camera_live: "Live Camera (4K)",
+        camera_sound: "Camera Sound",
+        shutter_sound_label: "Camera shutter sound when capturing",
         batch_mode: "Batch Mode (Multi-Page)",
         gallery: "Gallery",
         id_card_mode: "🪪 ID Card / License (2 Sides in 1 A4)",
@@ -5623,6 +5633,13 @@ $('watermarkText')?.addEventListener('input', (e) => {
 
 $('autoSaveToggle')?.addEventListener('change', (e) => {
     state.settings.autoSave = e.target.checked;
+});
+
+$('shutterSoundToggle')?.addEventListener('change', (e) => {
+    state.settings.shutterSound = e.target.checked;
+    if (e.target.checked) {
+        playShutterSound();
+    }
 });
 
 async function saveSettings() {
@@ -8101,6 +8118,8 @@ async function handleBatchCapture(e) {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
+    playShutterSound();
+    triggerHaptic('medium');
     showLoading(`Processando ${files.length} páginas...`);
     closeModal('captureModal');
 
@@ -8400,9 +8419,43 @@ function triggerFileFallback() {
     $('cameraInput').click();
 }
 
+let _shutterAudio = null;
 let _shutterAudioCtx = null;
+let _isAudioUnlocked = false;
 
-function playShutterSound() {
+function unlockShutterAudio() {
+    if (_isAudioUnlocked) return;
+    try {
+        if (!_shutterAudio) {
+            _shutterAudio = new Audio('shutter.mp3');
+        }
+        _shutterAudio.volume = 0.001;
+        const p = _shutterAudio.play();
+        if (p) {
+            p.then(() => {
+                _shutterAudio.pause();
+                _shutterAudio.currentTime = 0;
+                _shutterAudio.volume = 1.0;
+                _isAudioUnlocked = true;
+            }).catch(() => {});
+        }
+    } catch (e) {}
+
+    try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx && (!_shutterAudioCtx || _shutterAudioCtx.state === 'closed')) {
+            _shutterAudioCtx = new AudioCtx();
+        }
+        if (_shutterAudioCtx && _shutterAudioCtx.state === 'suspended') {
+            _shutterAudioCtx.resume();
+        }
+    } catch (e) {}
+}
+
+window.addEventListener('click', unlockShutterAudio, { once: true });
+window.addEventListener('touchstart', unlockShutterAudio, { once: true });
+
+function playSynthesizedShutter() {
     try {
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
         if (!AudioCtx) return;
@@ -8475,7 +8528,29 @@ function playShutterSound() {
         thump.stop(now + 0.12);
 
     } catch (e) {
-        console.warn('Shutter sound error:', e);
+        console.warn('Synthesized shutter sound error:', e);
+    }
+}
+
+function playShutterSound() {
+    if (state.settings && state.settings.shutterSound === false) {
+        return;
+    }
+
+    try {
+        if (!_shutterAudio) {
+            _shutterAudio = new Audio('shutter.mp3');
+        }
+        _shutterAudio.currentTime = 0;
+        _shutterAudio.volume = 1.0;
+        const playPromise = _shutterAudio.play();
+        if (playPromise !== undefined) {
+            playPromise.catch(() => {
+                playSynthesizedShutter();
+            });
+        }
+    } catch (e) {
+        playSynthesizedShutter();
     }
 }
 

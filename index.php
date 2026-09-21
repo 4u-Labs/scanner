@@ -1257,6 +1257,17 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
                         </label>
                     </div>
                 </div>
+
+                <div class="setting-group">
+                    <h3 data-i18n="camera_sound">Som da Câmera</h3>
+                    <div class="setting-item">
+                        <label data-i18n="shutter_sound_label">Som de obturador ao capturar fotos</label>
+                        <label class="switch">
+                            <input type="checkbox" id="shutterSoundToggle" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
