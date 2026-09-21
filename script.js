@@ -516,6 +516,9 @@ function updateDocumentsGrid() {
                 </div>
                 <div class="folder-icon">${folder.isLocked ? '🔒' : '📁'}</div>
                 <div class="folder-name">${folder.name}</div>
+                <button class="doc-menu-btn" onclick="event.stopPropagation(); showContextMenu(event, 'folder', '${folder.id}')" aria-label="Opções da pasta">
+                    <svg viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+                </button>
             </div>
         `;
     });
@@ -2802,13 +2805,28 @@ function showContextMenu(event, type, id) {
     menu.style.left = `${x}px`;
     menu.style.top = `${y}px`;
 
-    // Show/hide lock options
+    // Show/hide options based on type (folder vs doc)
     const lockOpt = $('lockFolderOption');
     const unlockOpt = $('unlockFolderOption');
+    const docOnlyActions = ['favorite', 'share', 'move', 'download', 'ocr', 'drive'];
+    docOnlyActions.forEach(act => {
+        const btn = menu.querySelector(`[data-action="${act}"]`);
+        if (btn) btn.classList.toggle('hidden', type === 'folder');
+    });
+
+    const viewSpan = menu.querySelector('[data-action="view"] span');
+    if (viewSpan) {
+        if (type === 'folder') {
+            viewSpan.textContent = currentLang === 'en' ? 'Open Folder' : 'Abrir Pasta';
+        } else {
+            viewSpan.textContent = currentLang === 'en' ? 'View' : 'Visualizar';
+        }
+    }
+
     if (type === 'folder') {
         const folder = state.folders.find(f => f.id === id);
-        lockOpt.classList.toggle('hidden', folder.isLocked);
-        unlockOpt.classList.toggle('hidden', !folder.isLocked);
+        lockOpt.classList.toggle('hidden', folder ? !!folder.isLocked : false);
+        unlockOpt.classList.toggle('hidden', folder ? !folder.isLocked : true);
     } else {
         lockOpt.classList.add('hidden');
         unlockOpt.classList.add('hidden');
