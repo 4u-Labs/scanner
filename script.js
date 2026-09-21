@@ -458,7 +458,7 @@ function updateDocumentsGrid() {
     // Documents
     docs.forEach((doc, i) => {
         const isSelected = state.selectedItems.includes(`doc_${doc.id}`);
-        const date = new Date(doc.date).toLocaleDateString('pt-BR');
+        const date = new Date(doc.date).toLocaleDateString(currentLang === 'en' ? 'en-US' : 'pt-BR');
         html += `
             <div class="doc-item ${isSelected ? 'selected' : ''}" 
                  data-type="doc" data-id="${doc.id}" style="animation-delay: ${(folders.length + i) * 0.05}s"
@@ -2725,7 +2725,7 @@ async function handleContextAction(action) {
                 openFolderModal(folder);
             } else {
                 const doc = state.documents.find(d => d.id === id);
-                const newName = prompt('Novo nome:', doc.name);
+                const newName = prompt(t('prompt_new_name') || 'Novo nome:', doc.name);
                 if (newName) {
                     doc.name = newName;
                     await saveToStore('documents', doc);
@@ -2758,12 +2758,12 @@ async function handleContextAction(action) {
             if (type === 'doc') {
                 const doc = state.documents.find(d => d.id === id);
                 if (state.driveConnected && navigator.onLine) {
-                    showLoading('Enviando para Drive...');
+                    showLoading(currentLang === 'en' ? 'Uploading to Drive...' : 'Enviando para Drive...');
                     await uploadToDrive(doc.image, doc.name, 'image/jpeg');
                     hideLoading();
-                    showToast('Enviado para o Gabriel!', 'success');
+                    showToast(currentLang === 'en' ? 'Saved to Google Drive!' : 'Enviado para o Google Drive!', 'success');
                 } else {
-                    showToast('Conecte ao Google Drive primeiro', 'error');
+                    showToast(currentLang === 'en' ? 'Connect to Google Drive first' : 'Conecte ao Google Drive primeiro', 'error');
                 }
             }
             break;
@@ -2777,7 +2777,7 @@ async function handleContextAction(action) {
             break;
 
         case 'delete':
-            if (confirm('Tem certeza que deseja excluir?')) {
+            if (confirm(t('confirm_delete_item') || 'Tem certeza que deseja excluir?')) {
                 if (type === 'folder') {
                     await deleteFolder(id);
                 } else {
@@ -3402,7 +3402,30 @@ const I18N_DICT = {
         filter_document: "Documento",
         filter_whiteboard: "Quadro",
         filter_autoclean: "Auto Limpar",
-        lang_switch_msg: "Idioma alterado para Português 🇧🇷"
+        lang_switch_msg: "Idioma alterado para Português 🇧🇷",
+        ctx_view: "Visualizar",
+        ctx_favorite: "Favoritar",
+        ctx_share: "Compartilhar",
+        ctx_lock: "Proteger com PIN",
+        ctx_unlock: "Remover Proteção",
+        ctx_rename: "Renomear",
+        ctx_move: "Mover para pasta",
+        ctx_download: "Baixar",
+        ctx_ocr: "Extrair Texto (OCR)",
+        ctx_drive: "Enviar para Drive",
+        ctx_delete: "Excluir",
+        prompt_new_name: "Novo nome:",
+        confirm_delete_item: "Tem certeza que deseja excluir?",
+        confirm_delete_doc: "Excluir este documento?",
+        confirm_delete_multiple: "Excluir {n} itens?",
+        move_to_title: "Mover para",
+        pin_modal_title: "Digite o PIN",
+        viewer_add_page: "+ Página",
+        ocr_title: "Texto Extraído (OCR)",
+        ocr_placeholder: "O texto extraído aparecerá aqui...",
+        copy_text: "Copiar Texto",
+        export_excel: "Exportar Excel (.xlsx)",
+        print_btn: "Imprimir"
     },
     en: {
         app_title: "DocScan Pro",
@@ -3480,7 +3503,30 @@ const I18N_DICT = {
         filter_document: "Document",
         filter_whiteboard: "Whiteboard",
         filter_autoclean: "Auto Clean",
-        lang_switch_msg: "Language changed to English 🇺🇸"
+        lang_switch_msg: "Language changed to English 🇺🇸",
+        ctx_view: "View",
+        ctx_favorite: "Favorite",
+        ctx_share: "Share",
+        ctx_lock: "Protect with PIN",
+        ctx_unlock: "Remove PIN",
+        ctx_rename: "Rename",
+        ctx_move: "Move to Folder",
+        ctx_download: "Download",
+        ctx_ocr: "Extract Text (OCR)",
+        ctx_drive: "Save to Drive",
+        ctx_delete: "Delete",
+        prompt_new_name: "New name:",
+        confirm_delete_item: "Are you sure you want to delete?",
+        confirm_delete_doc: "Delete this document?",
+        confirm_delete_multiple: "Delete {n} items?",
+        move_to_title: "Move to",
+        pin_modal_title: "Enter PIN",
+        viewer_add_page: "+ Page",
+        ocr_title: "Extracted Text (OCR)",
+        ocr_placeholder: "Extracted text will appear here...",
+        copy_text: "Copy Text",
+        export_excel: "Export to Excel (.xlsx)",
+        print_btn: "Print"
     }
 };
 
@@ -3611,6 +3657,18 @@ function setLanguage(lang) {
     document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
         if (dict[key]) el.textContent = dict[key];
+    });
+
+    // Translate all [data-i18n-ph] elements (placeholders)
+    document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+        const key = el.getAttribute('data-i18n-ph');
+        if (dict[key]) el.setAttribute('placeholder', dict[key]);
+    });
+
+    // Translate all [data-i18n-title] elements
+    document.querySelectorAll('[data-i18n-title]').forEach(el => {
+        const key = el.getAttribute('data-i18n-title');
+        if (dict[key]) el.setAttribute('title', dict[key]);
     });
 
     if (typeof updateUI === 'function') {

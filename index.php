@@ -866,20 +866,20 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
                 <path
                     d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" />
             </svg>
-            <span>Visualizar</span>
+            <span data-i18n="ctx_view">Visualizar</span>
         </button>
         <button class="context-item" data-action="favorite">
             <svg viewBox="0 0 24 24">
                 <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
             </svg>
-            <span>Favoritar</span>
+            <span data-i18n="ctx_favorite">Favoritar</span>
         </button>
         <button class="context-item" data-action="share">
             <svg viewBox="0 0 24 24">
                 <path
                     d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z" />
             </svg>
-            <span>Compartilhar</span>
+            <span data-i18n="ctx_share">Compartilhar</span>
         </button>
         <div class="context-divider"></div>
         <button class="context-item" data-action="lock" id="lockFolderOption">
@@ -887,14 +887,14 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
                 <path
                     d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
             </svg>
-            <span>Proteger com PIN</span>
+            <span data-i18n="ctx_lock">Proteger com PIN</span>
         </button>
         <button class="context-item hidden" data-action="unlock" id="unlockFolderOption">
             <svg viewBox="0 0 24 24">
                 <path
                     d="M12 17c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm6-9h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6h1.9c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm0 12H6V10h12v10z" />
             </svg>
-            <span>Remover Proteção</span>
+            <span data-i18n="ctx_unlock">Remover Proteção</span>
         </button>
         <div class="context-divider"></div>
         <button class="context-item" data-action="rename">
@@ -902,40 +902,40 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
                 <path
                     d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
             </svg>
-            <span>Renomear</span>
+            <span data-i18n="ctx_rename">Renomear</span>
         </button>
         <button class="context-item" data-action="move">
             <svg viewBox="0 0 24 24">
                 <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" />
             </svg>
-            <span>Mover para pasta</span>
+            <span data-i18n="ctx_move">Mover para pasta</span>
         </button>
         <button class="context-item" data-action="download">
             <svg viewBox="0 0 24 24">
                 <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
             </svg>
-            <span>Baixar</span>
+            <span data-i18n="ctx_download">Baixar</span>
         </button>
         <button class="context-item" data-action="ocr">
             <svg viewBox="0 0 24 24">
                 <path
                     d="M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5C13 2.12 11.88 1 10.5 1S8 2.12 8 3.5V5H4c-1.1 0-1.99.9-1.99 2v3.8H3.5c1.49 0 2.7 1.21 2.7 2.7s-1.21 2.7-2.7 2.7H2V20c0 1.1.9 2 2 2h3.8v-1.5c0-1.49 1.21-2.7 2.7-2.7 1.49 0 2.7 1.21 2.7 2.7V22H17c1.1 0 2-.9 2-2v-4h1.5c1.38 0 2.5-1.12 2.5-2.5S21.88 11 20.5 11z" />
             </svg>
-            <span>Extrair Texto (OCR)</span>
+            <span data-i18n="ctx_ocr">Extrair Texto (OCR)</span>
         </button>
         <button class="context-item" data-action="drive">
             <svg viewBox="0 0 24 24">
                 <path
                     d="M7.71 3.5L1.15 15l3.43 6 6.55-11.5L7.71 3.5zm1.14 0l6.57 11.5h6.56l-6.57-11.5H8.85zm7.14 12.5H2.29l3.43 6h13.71l-3.44-6z" />
             </svg>
-            <span>Enviar para Drive</span>
+            <span data-i18n="ctx_drive">Enviar para Drive</span>
         </button>
         <div class="context-divider"></div>
         <button class="context-item danger" data-action="delete">
             <svg viewBox="0 0 24 24">
                 <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
             </svg>
-            <span>Excluir</span>
+            <span data-i18n="ctx_delete">Excluir</span>
         </button>
     </div>
 
@@ -949,7 +949,7 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
                             d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
                     </svg>
                 </button>
-                <h2>Mover para</h2>
+                <h2 data-i18n="move_to_title">Mover para</h2>
                 <div></div>
             </div>
             <div id="moveFoldersList" class="folders-list"></div>
@@ -960,7 +960,7 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
     <div id="pinModal" class="modal">
         <div class="modal-content pin-modal">
             <div class="modal-header">
-                <h2 id="pinModalTitle">Digite o PIN</h2>
+                <h2 id="pinModalTitle" data-i18n="pin_modal_title">Digite o PIN</h2>
                 <button id="closePinModalBtn" class="icon-btn">
                     <svg viewBox="0 0 24 24">
                         <path
@@ -1046,7 +1046,7 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
                 <button id="viewerPrevPageBtn" class="viewer-page-btn" title="Página Anterior" onclick="viewerNavigatePage(-1)">◀</button>
                 <span id="viewerPageIndicator" class="viewer-page-indicator">Página 1 de 1</span>
                 <button id="viewerNextPageBtn" class="viewer-page-btn" title="Próxima Página" onclick="viewerNavigatePage(1)">▶</button>
-                <button id="viewerAddPageBtn" class="viewer-page-btn add-page" title="Adicionar Página" onclick="viewerAddPage()">+ Página</button>
+                <button id="viewerAddPageBtn" class="viewer-page-btn add-page" title="Adicionar Página" onclick="viewerAddPage()" data-i18n="viewer_add_page">+ Página</button>
                 <button id="viewerDeletePageBtn" class="viewer-page-btn delete-page" title="Excluir Página Atual" onclick="viewerDeletePage()">🗑️</button>
             </div>
         </div>
@@ -1062,37 +1062,37 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
                             d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
                     </svg>
                 </button>
-                <h2>Texto Extraído (OCR)</h2>
+                <h2 data-i18n="ocr_title">Texto Extraído (OCR)</h2>
                 <div></div>
             </div>
             <div class="ocr-content">
-                <textarea id="ocrText" placeholder="O texto extraído aparecerá aqui..."></textarea>
+                <textarea id="ocrText" data-i18n-ph="ocr_placeholder" placeholder="O texto extraído aparecerá aqui..."></textarea>
                 <div class="ocr-actions">
                     <button id="copyOcrBtn" class="ocr-action-btn primary">
                         <svg viewBox="0 0 24 24" width="18" height="18">
                             <path fill="currentColor"
                                 d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" />
                         </svg>
-                        <span>Copiar Texto</span>
+                        <span data-i18n="copy_text">Copiar Texto</span>
                     </button>
                     <button id="shareOcrBtn" class="ocr-action-btn secondary">
                         <svg viewBox="0 0 24 24" width="18" height="18">
                             <path fill="currentColor"
                                 d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z" />
                         </svg>
-                        <span>Compartilhar</span>
+                        <span data-i18n="ctx_share">Compartilhar</span>
                     </button>
                     <button id="exportExcelBtn" class="ocr-action-btn" style="background: rgba(16, 185, 129, 0.15); color: #10b981;" onclick="exportOcrToExcel()">
                         <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
                             <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14.5l-2.5-3.8-2.5 3.8H5l3.8-5.7L5.2 8h2l2.3 3.5L11.8 8h2l-3.6 5.8 3.8 5.7h-2zm7 .5h-4v-2h4v2zm0-4h-4v-2h4v2zm0-4h-4V8h4v2z"/>
                         </svg>
-                        <span>Exportar Excel (.xlsx)</span>
+                        <span data-i18n="export_excel">Exportar Excel (.xlsx)</span>
                     </button>
                     <button id="printOcrThermalBtn" class="ocr-action-btn btn-thermal-print full-width" onclick="printOcrTextThermal()">
                         <svg viewBox="0 0 24 24" width="18" height="18">
                             <path fill="currentColor" d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/>
                         </svg>
-                        <span>Imprimir</span>
+                        <span data-i18n="print_btn">Imprimir</span>
                     </button>
                 </div>
             </div>
