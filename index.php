@@ -1441,11 +1441,17 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
                     <h3>Sincronização</h3>
                     <p>Salve localmente e sincronize com Google Drive quando quiser</p>
                 </div>
+                <div class="tutorial-slide" data-slide="5">
+                    <div class="tutorial-icon">🔒</div>
+                    <h3>Pastas & Biometria</h3>
+                    <p>Proteja pastas com PIN de 4 dígitos e desbloqueie usando a digital do seu celular</p>
+                </div>
             </div>
             <div class="tutorial-navigation">
                 <button id="tutorialSkip" class="tutorial-btn-secondary">Pular</button>
                 <div class="tutorial-dots">
                     <span class="dot active"></span>
+                    <span class="dot"></span>
                     <span class="dot"></span>
                     <span class="dot"></span>
                     <span class="dot"></span>
