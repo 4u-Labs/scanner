@@ -2,7 +2,7 @@
 // DocScan Pro - Service Worker
 // ============================================
 
-const CACHE_NAME = 'docscan-pro-v10';
+const CACHE_NAME = 'docscan-pro-v11';
 const OFFLINE_URL = 'index.php';
 
 // Resources to cache for offline fallback
@@ -21,7 +21,7 @@ const STATIC_ASSETS = [
 
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
-    console.log('[ServiceWorker] Install v10 (Network-First)');
+    console.log('[ServiceWorker] Install v11 (Network-First)');
 
     event.waitUntil(
         caches.open(CACHE_NAME)

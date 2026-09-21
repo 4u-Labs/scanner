@@ -8643,7 +8643,7 @@ function unlockShutterAudio() {
     if (_isAudioUnlocked) return;
     try {
         if (!_shutterAudio) {
-            _shutterAudio = new Audio('shutter.mp3');
+            _shutterAudio = new Audio('shutter.mp3?v=2');
         }
         _shutterAudio.volume = 0.001;
         const p = _shutterAudio.play();
@@ -8727,21 +8727,21 @@ function playSynthesizedShutter() {
         // Click 1: Front shutter curtain open (crisp, high mechanical snap)
         createClick(now, 1850, 0.022, 0.45, 3600);
 
-        // Click 2: Rear shutter curtain close (deeper mechanical clack)
-        createClick(now + 0.046, 850, 0.036, 0.55, 1750);
+        // Click 2: Rear shutter curtain close (deeper mechanical clack) - matched to uploaded audio (~98ms)
+        createClick(now + 0.098, 850, 0.036, 0.55, 1750);
 
         // Low body resonance / mirror slap thump
         const thump = ctx.createOscillator();
         const thumpGain = ctx.createGain();
         thump.type = 'sine';
-        thump.frequency.setValueAtTime(150, now + 0.046);
-        thump.frequency.exponentialRampToValueAtTime(40, now + 0.11);
-        thumpGain.gain.setValueAtTime(0.35, now + 0.046);
-        thumpGain.gain.exponentialRampToValueAtTime(0.001, now + 0.11);
+        thump.frequency.setValueAtTime(150, now + 0.098);
+        thump.frequency.exponentialRampToValueAtTime(40, now + 0.16);
+        thumpGain.gain.setValueAtTime(0.35, now + 0.098);
+        thumpGain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
         thump.connect(thumpGain);
         thumpGain.connect(ctx.destination);
-        thump.start(now + 0.046);
-        thump.stop(now + 0.12);
+        thump.start(now + 0.098);
+        thump.stop(now + 0.18);
 
     } catch (e) {
         console.warn('Synthesized shutter sound error:', e);
@@ -8755,7 +8755,7 @@ function playShutterSound() {
 
     try {
         if (!_shutterAudio) {
-            _shutterAudio = new Audio('shutter.mp3');
+            _shutterAudio = new Audio('shutter.mp3?v=2');
         }
         _shutterAudio.currentTime = 0;
         _shutterAudio.volume = 1.0;
