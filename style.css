@@ -3428,9 +3428,36 @@ body.theme-light {
 .pin-modal {
     padding: 24px;
     max-width: 320px;
-    margin: 30% auto;
+    width: 90%;
+    margin: auto;
     border-radius: var(--radius-xl);
     background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+}
+
+.btn-biometric {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.22) 0%, rgba(0, 217, 165, 0.15) 100%);
+    border: 1px solid rgba(16, 185, 129, 0.45);
+    border-radius: var(--radius-md);
+    color: #34d399;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-biometric:hover, .btn-biometric:active {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.38) 0%, rgba(0, 217, 165, 0.28) 100%);
+    border-color: #10b981;
+    color: #ffffff;
+    transform: scale(0.98);
 }
 
 .pin-display {

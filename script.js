@@ -514,7 +514,7 @@ function updateDocumentsGrid() {
                 <div class="doc-checkbox">
                     <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
                 </div>
-                <div class="folder-icon">📁</div>
+                <div class="folder-icon">${folder.isLocked ? '🔒' : '📁'}</div>
                 <div class="folder-name">${folder.name}</div>
             </div>
         `;
@@ -2680,6 +2680,15 @@ function downloadFile(data, fileName, mimeType) {
 // ============================================
 // Folder Management
 // ============================================
+function toggleFolderLockFields() {
+    const isLocked = $('folderLockToggle')?.checked;
+    $('folderLockFields')?.classList.toggle('hidden', !isLocked);
+    if (isLocked) {
+        setTimeout(() => $('folderPinInput')?.focus(), 100);
+    }
+}
+window.toggleFolderLockFields = toggleFolderLockFields;
+
 function openFolderModal(folder = null) {
     state.editingDocId = folder?.id || null;
     $('folderModalTitle').textContent = folder 
@@ -2687,6 +2696,15 @@ function openFolderModal(folder = null) {
         : (t('new_folder_title') || 'Nova Pasta');
     $('folderNameInput').value = folder?.name || '';
     $('folderNameInput').placeholder = t('new_folder_ph') || 'Nova pasta';
+
+    const isLocked = !!folder?.isLocked;
+    const lockToggle = $('folderLockToggle');
+    if (lockToggle) lockToggle.checked = isLocked;
+    const pinInput = $('folderPinInput');
+    if (pinInput) pinInput.value = folder?.pin || '';
+    const lockFields = $('folderLockFields');
+    if (lockFields) lockFields.classList.toggle('hidden', !isLocked);
+
     openModal('folderModal');
 }
 
@@ -2697,11 +2715,25 @@ async function saveFolder() {
         return;
     }
 
+    const isLocked = $('folderLockToggle') ? $('folderLockToggle').checked : false;
+    const pin = $('folderPinInput') ? $('folderPinInput').value.trim() : '';
+
+    if (isLocked && (!pin || pin.length < 4)) {
+        showToast(currentLang === 'en' ? 'PIN must have 4 digits' : 'O PIN deve ter 4 dígitos', 'warning');
+        return;
+    }
+
     if (state.editingDocId) {
         // Update existing folder
         const folder = state.folders.find(f => f.id === state.editingDocId);
         if (folder) {
             folder.name = name;
+            folder.isLocked = isLocked;
+            if (isLocked) {
+                folder.pin = pin;
+            } else {
+                delete folder.pin;
+            }
             await saveToStore('folders', folder);
         }
     } else {
@@ -2710,15 +2742,32 @@ async function saveFolder() {
             id: generateId(),
             name: name,
             parent: state.currentFolder,
-            date: new Date().toISOString()
+            date: new Date().toISOString(),
+            isLocked: isLocked,
+            ...(isLocked ? { pin } : {})
         };
         await saveToStore('folders', folder);
         state.folders.push(folder);
     }
 
+    // If locked was enabled, ask if user wants to enable biometrics now
+    if (isLocked && localStorage.getItem('docscan_bio_enabled') !== 'true') {
+        const canBio = await isBiometricAvailable();
+        if (canBio) {
+            setTimeout(async () => {
+                const wantsBio = confirm(currentLang === 'en' 
+                    ? 'Would you like to enable fingerprint/biometrics to unlock this folder quickly?' 
+                    : 'Deseja ativar a impressão digital / biometria para desbloquear esta pasta rapidamente?');
+                if (wantsBio) {
+                    await registerBiometrics();
+                }
+            }, 350);
+        }
+    }
+
     closeModal('folderModal');
     updateUI();
-    showToast('Pasta salva com sucesso!', 'success');
+    showToast(currentLang === 'en' ? 'Folder saved successfully!' : 'Pasta salva com sucesso!', 'success');
 }
 
 function showFoldersView() {
@@ -3509,6 +3558,10 @@ const I18N_DICT = {
         folder_name_label: "Nome da pasta",
         new_folder_ph: "Nova pasta",
         enter_folder_name_error: "Digite um nome para a pasta",
+        lock_folder_label: "Proteger com Senha / Digital",
+        folder_pin_label: "Senha / PIN (4 dígitos numéricos):",
+        folder_bio_hint: "💡 Você também poderá desbloquear usando a digital/biometria cadastrada no seu aparelho.",
+        unlock_fingerprint: "Desbloquear com Digital",
         stats: "Estatísticas",
         stat_docs: "Documentos",
         stat_folders: "Pastas",
@@ -3658,6 +3711,10 @@ const I18N_DICT = {
         folder_name_label: "Folder name",
         new_folder_ph: "New folder",
         enter_folder_name_error: "Enter a folder name",
+        lock_folder_label: "Protect with Password / Biometrics",
+        folder_pin_label: "Password / PIN (4 numeric digits):",
+        folder_bio_hint: "💡 You can also unlock using the fingerprint/biometrics on your device.",
+        unlock_fingerprint: "Unlock with Fingerprint",
         stats: "Statistics",
         stat_docs: "Documents",
         stat_folders: "Folders",
@@ -5413,6 +5470,132 @@ function showToast(message, type = '') {
 }
 
 // ============================================
+// WebAuthn Biometrics (Digital / Face ID)
+// ============================================
+async function isBiometricAvailable() {
+    if (window.PublicKeyCredential && 
+        typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function') {
+        try {
+            return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+        } catch (e) {
+            return false;
+        }
+    }
+    return false;
+}
+window.isBiometricAvailable = isBiometricAvailable;
+
+async function registerBiometrics() {
+    if (!await isBiometricAvailable()) return false;
+    try {
+        const challenge = new Uint8Array(32);
+        window.crypto.getRandomValues(challenge);
+        const userId = new Uint8Array(16);
+        window.crypto.getRandomValues(userId);
+
+        const credential = await navigator.credentials.create({
+            publicKey: {
+                challenge: challenge,
+                rp: { name: 'DocScan Pro', id: window.location.hostname },
+                user: {
+                    id: userId,
+                    name: 'docscan_user',
+                    displayName: 'DocScan Pro'
+                },
+                pubKeyCredParams: [{ alg: -7, type: 'public-key' }, { alg: -257, type: 'public-key' }],
+                authenticatorSelection: {
+                    authenticatorAttachment: 'platform',
+                    userVerification: 'required'
+                },
+                timeout: 60000
+            }
+        });
+
+        if (credential) {
+            const credId = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
+            localStorage.setItem('docscan_bio_cred_id', credId);
+            localStorage.setItem('docscan_bio_enabled', 'true');
+            showToast(currentLang === 'en' ? 'Biometrics registered successfully! ✓' : 'Digital cadastrada com sucesso! ✓', 'success');
+            return true;
+        }
+    } catch (e) {
+        console.warn('Biometric enrollment error:', e);
+        return false;
+    }
+    return false;
+}
+window.registerBiometrics = registerBiometrics;
+
+async function verifyBiometrics() {
+    if (!await isBiometricAvailable()) return false;
+    try {
+        const challenge = new Uint8Array(32);
+        window.crypto.getRandomValues(challenge);
+        const credIdBase64 = localStorage.getItem('docscan_bio_cred_id');
+
+        const getOptions = {
+            publicKey: {
+                challenge: challenge,
+                rpId: window.location.hostname,
+                userVerification: 'required',
+                timeout: 60000
+            }
+        };
+
+        if (credIdBase64) {
+            const rawId = Uint8Array.from(atob(credIdBase64), c => c.charCodeAt(0));
+            getOptions.publicKey.allowCredentials = [{
+                id: rawId,
+                type: 'public-key'
+            }];
+        }
+
+        const assertion = await navigator.credentials.get(getOptions);
+        return !!assertion;
+    } catch (e) {
+        console.warn('Biometric verification error:', e);
+        return false;
+    }
+}
+window.verifyBiometrics = verifyBiometrics;
+
+async function triggerBiometricUnlock() {
+    triggerHaptic('medium');
+    const folderId = pinTargetId || state.currentFolder;
+    const folder = state.folders.find(f => f.id === folderId);
+    if (!folder || !folder.isLocked) return;
+
+    const hasCred = localStorage.getItem('docscan_bio_cred_id');
+    let success = false;
+
+    if (hasCred) {
+        success = await verifyBiometrics();
+    } else {
+        success = await registerBiometrics();
+    }
+
+    if (success) {
+        triggerHaptic('success');
+        closeModal('pinModal');
+        showToast(currentLang === 'en' ? 'Unlocked with Biometrics! ✓' : 'Desbloqueado com Digital! ✓', 'success');
+
+        if (state.contextTarget?.type !== 'folder' || !$('contextMenu') || $('contextMenu').classList.contains('hidden')) {
+            navigateToFolder(folderId);
+        } else {
+            folder.isLocked = false;
+            delete folder.pin;
+            await saveToStore('folders', folder);
+            updateUI();
+            showToast(currentLang === 'en' ? 'Protection removed' : 'Proteção removida', 'success');
+        }
+    } else {
+        triggerHaptic('warning');
+        showToast(currentLang === 'en' ? 'Biometrics not recognized. Use your PIN.' : 'Digital não reconhecida. Digite o PIN.', 'warning');
+    }
+}
+window.triggerBiometricUnlock = triggerBiometricUnlock;
+
+// ============================================
 // PIN Modal Functions
 // ============================================
 
@@ -5420,13 +5603,31 @@ let pinCallback = null;
 let currentPinMode = 'unlock'; // 'set' or 'unlock'
 let pinTargetId = null;
 
-function openPinModal(mode, targetId = null) {
+async function openPinModal(mode, targetId = null) {
     currentPinMode = mode;
     pinTargetId = targetId || (state.contextTarget ? state.contextTarget.id : null);
     state.currentPin = '';
     $('pinInput').value = '';
-    $('pinModalTitle').textContent = mode === 'set' ? 'Definir novo PIN (4 dígitos)' : 'Digite o PIN desta pasta';
+    $('pinModalTitle').textContent = mode === 'set' 
+        ? (currentLang === 'en' ? 'Set new 4-digit PIN' : 'Definir novo PIN (4 dígitos)') 
+        : (currentLang === 'en' ? 'Enter folder PIN' : 'Digite o PIN desta pasta');
+
+    const bioContainer = $('biometricUnlockContainer');
+    if (bioContainer) {
+        if (mode === 'unlock') {
+            const canBio = await isBiometricAvailable();
+            bioContainer.classList.toggle('hidden', !canBio);
+        } else {
+            bioContainer.classList.add('hidden');
+        }
+    }
+
     openModal('pinModal');
+
+    // If unlocking and biometrics already enrolled, trigger biometric prompt automatically
+    if (mode === 'unlock' && localStorage.getItem('docscan_bio_enabled') === 'true') {
+        setTimeout(() => triggerBiometricUnlock(), 300);
+    }
 }
 
 window.appendPin = function (num) {
@@ -5485,6 +5686,21 @@ window.confirmPin = async function () {
             updateUI();
             showToast('Pasta protegida com sucesso!', 'success');
             triggerHaptic(80);
+
+            // If setting PIN and biometrics is available, offer to enable it
+            if (localStorage.getItem('docscan_bio_enabled') !== 'true') {
+                const canBio = await isBiometricAvailable();
+                if (canBio) {
+                    setTimeout(async () => {
+                        const wantsBio = confirm(currentLang === 'en'
+                            ? 'Would you like to enable fingerprint/biometrics to unlock this folder quickly?'
+                            : 'Deseja ativar a impressão digital / biometria para desbloquear esta pasta rapidamente?');
+                        if (wantsBio) {
+                            await registerBiometrics();
+                        }
+                    }, 350);
+                }
+            }
         }
     }
 }

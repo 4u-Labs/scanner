@@ -875,6 +875,25 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
                     <label data-i18n="folder_name_label">Nome da pasta</label>
                     <input type="text" id="folderNameInput" data-i18n-ph="new_folder_ph" placeholder="Nova pasta">
                 </div>
+                <div class="form-group" style="margin-top: 14px;">
+                    <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
+                        <span style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 16px;">🔒</span>
+                            <span data-i18n="lock_folder_label" style="font-weight: 600;">Proteger com Senha / Digital</span>
+                        </span>
+                        <label class="switch">
+                            <input type="checkbox" id="folderLockToggle" onchange="toggleFolderLockFields()">
+                            <span class="slider"></span>
+                        </label>
+                    </label>
+                </div>
+                <div id="folderLockFields" class="hidden" style="margin-top: 10px; background: var(--bg-tertiary); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                    <label style="font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; display: block;" data-i18n="folder_pin_label">Senha / PIN (4 dígitos numéricos):</label>
+                    <input type="password" id="folderPinInput" maxlength="4" pattern="[0-9]*" inputmode="numeric" placeholder="••••" style="text-align: center; font-size: 20px; letter-spacing: 6px; font-weight: 700; width: 100%; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 10px; color: var(--text-primary);">
+                    <p style="font-size: 11px; color: var(--text-muted); margin-top: 8px; margin-bottom: 0;" data-i18n="folder_bio_hint">
+                        💡 Você também poderá desbloquear usando a digital/biometria cadastrada no seu aparelho.
+                    </p>
+                </div>
             </div>
         </div>
     </div>
@@ -990,6 +1009,14 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
             </div>
             <div class="pin-display">
                 <input type="password" id="pinInput" maxlength="4" placeholder="••••" readonly>
+            </div>
+            <div id="biometricUnlockContainer" class="hidden" style="margin: -6px 0 14px; text-align: center;">
+                <button type="button" id="biometricUnlockBtn" class="btn-biometric" onclick="triggerBiometricUnlock()">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                        <path d="M17.81 4.87c-.8-.77-1.74-1.39-2.81-1.79V2.05c1.47.46 2.76 1.25 3.84 2.29l-1.03.53zm-1.03 2.06c-.6-.58-1.3-.99-2.08-1.25v-1.1c1.07.31 2.03.85 2.84 1.57l-.76.78zM12 2C6.48 2 2 6.48 2 12c0 2.85 1.2 5.41 3.12 7.24l.71-.71C4.09 16.84 3 14.55 3 12c0-4.97 4.03-9 9-9s9 4.03 9 9c0 2.55-1.09 4.84-2.83 6.53l.71.71C20.8 17.41 22 14.85 22 12c0-5.52-4.48-10-10-10zm0 4c-3.31 0-6 2.69-6 6 0 1.66.67 3.16 1.76 4.24l.71-.71C7.57 14.63 7 13.38 7 12c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.38-.57 2.63-1.47 3.53l.71.71C17.33 15.16 18 13.66 18 12c0-3.31-2.69-6-6-6zm0 4c-1.1 0-2 .9-2 2 0 .55.22 1.05.59 1.41l.71-.71c-.19-.18-.3-.43-.3-.7 0-.55.45-1 1-1s1 .45 1 1c0 .27-.11.52-.3.7l.71.71c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2z"/>
+                    </svg>
+                    <span data-i18n="unlock_fingerprint">Desbloquear com Digital</span>
+                </button>
             </div>
             <div class="pin-keypad">
                 <button onclick="appendPin(1)">1</button>
