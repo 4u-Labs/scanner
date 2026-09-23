@@ -3501,6 +3501,7 @@ const I18N_DICT = {
         menu_settings: "Configurações",
         menu_tutorial: "Ajuda e Tutorial",
         menu_about: "Sobre",
+        menu_donate: "☕ Apoie o Projeto",
         menu_install: "Instalar App",
         install_app: "Instalar App",
         install_guide_title: "Instalar DocScan Pro",
@@ -3654,6 +3655,7 @@ const I18N_DICT = {
         menu_settings: "Settings",
         menu_tutorial: "Help & Tutorial",
         menu_about: "About",
+        menu_donate: "☕ Support Project",
         menu_install: "Install App",
         install_app: "Install App",
         install_guide_title: "Install DocScan Pro",
@@ -3838,6 +3840,7 @@ function setLanguage(lang) {
     setMenuText('menuSettings', dict.menu_settings);
     setMenuText('menuTutorial', dict.menu_tutorial);
     setMenuText('menuAbout', dict.menu_about);
+    setMenuText('menuDonate', dict.menu_donate);
     setMenuText('menuInstall', dict.menu_install);
 
     // Logout button

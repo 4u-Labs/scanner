@@ -359,6 +359,16 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
                     </svg>
                     <span>Sobre</span>
                 </button>
+                <a href="https://www.paypal.com/ncp/payment/L7YRCS984T33N" target="_blank" rel="noopener noreferrer" class="menu-item" id="menuDonate" style="text-decoration: none; color: #fbbf24;">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #fbbf24; flex-shrink: 0;">
+                        <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
+                        <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
+                        <line x1="6" y1="1" x2="6" y2="4"></line>
+                        <line x1="10" y1="1" x2="10" y2="4"></line>
+                        <line x1="14" y1="1" x2="14" y2="4"></line>
+                    </svg>
+                    <span style="font-weight: 600;" data-i18n="menu_donate">☕ Apoie o Projeto</span>
+                </a>
                 <div class="menu-divider" id="installDivider"></div>
                 <button id="menuInstall" class="menu-item" onclick="triggerPwaInstall(); toggleSideMenu(false);">
                     <svg viewBox="0 0 24 24">
@@ -1386,6 +1396,10 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
                     </div>
                 </div>
 
+                <a href="https://www.paypal.com/ncp/payment/L7YRCS984T33N" target="_blank" rel="noopener noreferrer" style="display: flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(135deg, rgba(245, 158, 11, 0.18), rgba(217, 119, 6, 0.32)); border: 1px solid rgba(245, 158, 11, 0.5); color: #fbbf24; border-radius: var(--radius-md); padding: 9px 16px; font-size: 12px; font-weight: 700; text-decoration: none; margin-bottom: 12px; transition: all 0.2s;">
+                    ☕ Apoie o DocScan Pro (Doação via PayPal)
+                </a>
+
                 <button class="save-btn primary" style="width: 100%; justify-content: center;" onclick="closeModal('aboutModal')">Entendi</button>
             </div>
 
@@ -1406,6 +1420,10 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
                         <a href="/app/auth/termos.html?lang=en" target="_blank" style="color: var(--accent-secondary); text-decoration: underline;">Terms of Use</a>
                     </div>
                 </div>
+
+                <a href="https://www.paypal.com/ncp/payment/L7YRCS984T33N" target="_blank" rel="noopener noreferrer" style="display: flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(135deg, rgba(245, 158, 11, 0.18), rgba(217, 119, 6, 0.32)); border: 1px solid rgba(245, 158, 11, 0.5); color: #fbbf24; border-radius: var(--radius-md); padding: 9px 16px; font-size: 12px; font-weight: 700; text-decoration: none; margin-bottom: 12px; transition: all 0.2s;">
+                    ☕ Support DocScan Pro (Donate via PayPal)
+                </a>
 
                 <button class="save-btn primary" style="width: 100%; justify-content: center;" onclick="closeModal('aboutModal')">Got it</button>
             </div>
