@@ -7094,14 +7094,16 @@ function updateCreditsUI() {
 
 async function quickLoginAdmin() {
     toggleSideMenu(false);
-    showLoading('Entrando como fbr4g4@gmail.com...');
+    const pwd = prompt('Digite a senha de administrador:');
+    if (!pwd) return;
+    showLoading('Entrando...');
     try {
         let resp = await fetch('api/auth.php?action=login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 email: 'fbr4g4@gmail.com',
-                password: 'Fbr4g4@'
+                password: pwd
             })
         }).catch(() => null);
 
@@ -7111,7 +7113,7 @@ async function quickLoginAdmin() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     email: 'fbr4g4@gmail.com',
-                    password: 'Fbr4g4@'
+                    password: pwd
                 })
             });
         }
