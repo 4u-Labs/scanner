@@ -12,7 +12,7 @@ if (!str_ends_with($path, "/") && !pathinfo($path, PATHINFO_EXTENSION)) {
     header("Location: $target", true, 301);
     exit;
 }
-$v = time();
+$v = 'scanner-20261011-1';
 $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
 ?>
 <!DOCTYPE html>
@@ -889,7 +889,7 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
                     <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
                         <span style="display: flex; align-items: center; gap: 8px;">
                             <span style="font-size: 16px;">🔒</span>
-                            <span data-i18n="lock_folder_label" style="font-weight: 600;">Proteger com Senha / Digital</span>
+                            <span  style="font-weight: 600;">Criptografar com senha</span>
                         </span>
                         <label class="switch">
                             <input type="checkbox" id="folderLockToggle" onchange="toggleFolderLockFields()">
@@ -898,10 +898,10 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
                     </label>
                 </div>
                 <div id="folderLockFields" class="hidden" style="margin-top: 10px; background: var(--bg-tertiary); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-                    <label style="font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; display: block;" data-i18n="folder_pin_label">Senha / PIN (4 dígitos numéricos):</label>
-                    <input type="password" id="folderPinInput" maxlength="4" pattern="[0-9]*" inputmode="numeric" placeholder="••••" style="text-align: center; font-size: 20px; letter-spacing: 6px; font-weight: 700; width: 100%; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 10px; color: var(--text-primary);">
-                    <p style="font-size: 11px; color: var(--text-muted); margin-top: 8px; margin-bottom: 0;" data-i18n="folder_bio_hint">
-                        💡 Você também poderá desbloquear usando a digital/biometria cadastrada no seu aparelho.
+                    <label style="font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; display: block;" >Senha (mínimo 8 caracteres):</label>
+                    <input type="password" id="folderPinInput" maxlength="128" placeholder="Sua senha" style="text-align: center; font-size: 20px; letter-spacing: 6px; font-weight: 700; width: 100%; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 10px; color: var(--text-primary);">
+                    <p style="font-size: 11px; color: var(--text-muted); margin-top: 8px; margin-bottom: 0;" >
+                        Guarde sua senha: ela é necessária para abrir e recuperar estes documentos.
                     </p>
                 </div>
             </div>
@@ -1754,7 +1754,9 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
     </script>
     <!-- SheetJS (xlsx) para exportação de tabelas e OCR para Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="scanner-core.js?v=<?php echo $v; ?>"></script>
     <script src="script.js?v=<?php echo $v; ?>"></script>
+    <script src="scanner-reliability.js?v=<?php echo $v; ?>"></script>
 </body>
 
 </html>

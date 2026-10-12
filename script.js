@@ -207,43 +207,30 @@ async function loadData() {
 }
 
 function getAllFromStore(storeName) {
-    return new Promise((resolve) => {
+    return new Promise((resolve,reject) => {
         const transaction = db.transaction(storeName, 'readonly');
         const store = transaction.objectStore(storeName);
         const request = store.getAll();
         request.onsuccess = () => resolve(request.result || []);
-        request.onerror = () => resolve([]);
+        request.onerror = () => reject(request.error);
     });
 }
 
 function getFromStore(storeName, key) {
-    return new Promise((resolve) => {
+    return new Promise((resolve,reject) => {
         const transaction = db.transaction(storeName, 'readonly');
         const store = transaction.objectStore(storeName);
         const request = store.get(key);
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => resolve(null);
-    });
-}
-
-function saveToStore(storeName, data) {
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction(storeName, 'readwrite');
-        const store = transaction.objectStore(storeName);
-        const request = store.put(data);
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
     });
 }
 
-function deleteFromStore(storeName, key) {
-    return new Promise((resolve) => {
-        const transaction = db.transaction(storeName, 'readwrite');
-        const store = transaction.objectStore(storeName);
-        const request = store.delete(key);
-        request.onsuccess = () => resolve();
-        request.onerror = () => resolve();
-    });
+function saveToStore(storeName,data) {
+ return new Promise((resolve,reject)=>{const tx=db.transaction(storeName,'readwrite');tx.objectStore(storeName).put(data);tx.oncomplete=()=>resolve(data.id||data.key);tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error('Gravação cancelada'));});
+}
+function deleteFromStore(storeName,key) {
+ return new Promise((resolve,reject)=>{const tx=db.transaction(storeName,'readwrite');tx.objectStore(storeName).delete(key);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error('Exclusão cancelada'));});
 }
 
 // ============================================
@@ -2467,9 +2454,15 @@ async function saveDocument(target) {
             thumbnail: createThumbnailFromCanvas() || imagesToSave[0],
             folder: folder,
             date: new Date().toISOString(),
-            format: format,
+            format: mimeType==='application/pdf'?'pdf':'jpg',
+            mimeType,
+            pages: [...imagesToSave],
+            fileBlob: await ScannerCore.asBlob(fileData,mimeType),
             pageCount: imagesToSave.length
         };
+
+        await saveToStore('documents',doc);
+        state.documents.push(doc);
 
         // Download locally if target requires
         if (target === 'local' || target === 'both') {
@@ -2486,16 +2479,19 @@ async function saveDocument(target) {
                     const uploadResult = await uploadToDrive(fileData, fileName, mimeType);
                     if (uploadResult && uploadResult.id) {
                         doc.driveId = uploadResult.id;
+                        await saveToStore('documents',doc);
                         driveUploadSuccess = true;
-                    }
+                    } else { throw new Error('O Drive não confirmou o arquivo'); }
                 } catch (dErr) {
                     console.warn('Erro ao enviar para o Drive na hora de salvar:', dErr);
                     driveErrorMsg = dErr.message;
                     // Queue for later sync
                     const pending = {
                         id: generateId(),
+                        documentId: doc.id,
+                        folder: doc.folder,
                         name: fileName,
-                        data: fileData,
+                        data: await ScannerCore.asBlob(fileData,mimeType),
                         mimeType: mimeType,
                         timestamp: new Date().toISOString()
                     };
@@ -2507,8 +2503,10 @@ async function saveDocument(target) {
                 // Queue for later
                 const pending = {
                     id: generateId(),
+                    documentId: doc.id,
+                    folder: doc.folder,
                     name: fileName,
-                    data: fileData,
+                    data: await ScannerCore.asBlob(fileData,mimeType),
                     mimeType: mimeType,
                     timestamp: new Date().toISOString()
                 };
@@ -2518,9 +2516,7 @@ async function saveDocument(target) {
             }
         }
 
-        // Save to IndexedDB (always persist locally so user never loses work!)
-        await saveToStore('documents', doc);
-        state.documents.push(doc);
+        // Complete document was committed before external operations.
 
         closeModal('saveModal');
         state.multiPageImages = [];
@@ -2578,40 +2574,17 @@ function showDriveApiActivationModal() {
 }
 
 async function generatePdf(images) {
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF();
-
-    for (let i = 0; i < images.length; i++) {
-        if (i > 0) pdf.addPage();
-
-        const img = new Image();
-        await new Promise(resolve => {
-            img.onload = resolve;
-            img.src = images[i];
-        });
-
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        const pageHeight = pdf.internal.pageSize.getHeight();
-
-        const imgRatio = img.width / img.height;
-        const pageRatio = pageWidth / pageHeight;
-
-        let width, height;
-        if (imgRatio > pageRatio) {
-            width = pageWidth - 20;
-            height = width / imgRatio;
-        } else {
-            height = pageHeight - 20;
-            width = height * imgRatio;
-        }
-
-        const x = (pageWidth - width) / 2;
-        const y = (pageHeight - height) / 2;
-
-        pdf.addImage(images[i], 'JPEG', x, y, width, height);
-    }
-
-    return pdf.output('datauristring');
+ if(!images.length)throw new Error('Documento sem páginas');
+ const {jsPDF}=window.jspdf;const pdf=new jsPDF();
+ for(let i=0;i<images.length;i++){
+  const img=await ScannerCore.loadImage(images[i]);
+  try{if(i)pdf.addPage();const w=pdf.internal.pageSize.getWidth()-20,h=pdf.internal.pageSize.getHeight()-20;
+   const ratio=Math.min(w/img.naturalWidth,h/img.naturalHeight),iw=img.naturalWidth*ratio,ih=img.naturalHeight*ratio;
+   pdf.addImage(img,'JPEG',(w+20-iw)/2,(h+20-ih)/2,iw,ih);
+  }finally{ScannerCore.releaseImage(img);}
+  await new Promise(resolve=>setTimeout(resolve,0));
+ }
+ return pdf.output('blob');
 }
 
 /** Create thumbnail from already-cropped/processed image data */
@@ -2665,20 +2638,7 @@ function showSaveSuccessAnimation() {
     setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 500); }, 2000);
 }
 
-function downloadFile(data, fileName, mimeType) {
-    const link = document.createElement('a');
-
-    if (mimeType === 'application/pdf') {
-        link.href = data;
-    } else {
-        link.href = data;
-    }
-
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-}
+async function downloadFile(data,fileName,mimeType){const blob=await ScannerCore.asBlob(data,mimeType);const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download=fileName;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);}
 
 // ============================================
 // Folder Management
@@ -2704,7 +2664,7 @@ function openFolderModal(folder = null) {
     const lockToggle = $('folderLockToggle');
     if (lockToggle) lockToggle.checked = isLocked;
     const pinInput = $('folderPinInput');
-    if (pinInput) pinInput.value = folder?.pin || '';
+    if (pinInput) pinInput.value = '';
     const lockFields = $('folderLockFields');
     if (lockFields) lockFields.classList.toggle('hidden', !isLocked);
 
@@ -5211,7 +5171,9 @@ async function syncGoogleDriveTwoWay(silent = false, mirror = false) {
         // 5. Process pending queue
         for (const pending of [...state.pendingUploads]) {
             try {
-                await uploadToDrive(pending.data, pending.name, pending.mimeType);
+                const uploaded=await uploadToDrive(pending.data,pending.name,pending.mimeType);
+            if(!uploaded?.id)throw new Error('Drive não confirmou o envio');
+            if(pending.documentId){const doc=state.documents.find(d=>d.id===pending.documentId);if(doc){doc.driveId=uploaded.id;await saveToStore('documents',doc);}}
                 await deleteFromStore('pending', pending.id);
                 state.pendingUploads = state.pendingUploads.filter(p => p.id !== pending.id);
             } catch (pErr) {}
@@ -5348,13 +5310,7 @@ async function uploadToDrive(fileData, fileName, mimeType) {
         metadata.parents = [folderId];
     }
 
-    const base64Data = fileData.includes(',') ? fileData.split(',')[1] : fileData;
-    const binaryStr = atob(base64Data);
-    const bytes = new Uint8Array(binaryStr.length);
-    for (let i = 0; i < binaryStr.length; i++) {
-        bytes[i] = binaryStr.charCodeAt(i);
-    }
-    const fileBlob = new Blob([bytes], { type: mimeType });
+    const fileBlob=await ScannerCore.asBlob(fileData,mimeType);
 
     const boundary = '-------DocScanBoundary' + Math.random().toString(36).substring(2);
     const delimiter = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` + JSON.stringify(metadata) + `\r\n--${boundary}\r\nContent-Type: ${mimeType}\r\n\r\n`;
@@ -5935,16 +5891,17 @@ function openOCRFromGallery() {
 async function extractTextWithAI(imageSrc) {
     const token = state.token || 'guest_system_token_777';
     try {
-        let base64 = imageSrc;
-        if (base64.includes('base64,')) {
-            base64 = base64.split('base64,')[1];
-        }
-        updateProgress(40, 'Processando com Inteligência Artificial...');
+        let base64;
+        if(!await ScannerUX.allowCloudOCR())return null;
+        imageSrc=await ScannerCore.asDataURL(imageSrc);
+        base64=imageSrc.includes('base64,')?imageSrc.split('base64,')[1]:imageSrc;
+        updateProgress(40, 'Enviando imagem para OCR na nuvem...');
 
         const prompt = 'Você é um assistente de OCR de altíssima precisão. Extraia todo o texto visível deste documento ou comprovante fiscal exatamente como está escrito, preservando nomes, telefones, CNPJ/CPF, número de pedido, datas e horários, itens, valores em R$, status e carimbos. Ignore ruídos de códigos de barra ou QR code (apenas mencione [QR Code presente] se houver). Retorne estritamente o texto transcrito, de maneira limpa, profissional e legível, sem introduções ou comentários adicionais.';
 
         let resp = await fetch('api/ai_vision.php', {
             method: 'POST',
+            signal: ScannerUX.signal,
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
@@ -5959,6 +5916,7 @@ async function extractTextWithAI(imageSrc) {
         if (!resp || !resp.ok) {
             resp = await fetch('../keepai/api/ai_vision.php', {
                 method: 'POST',
+            signal: ScannerUX.signal,
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
@@ -5982,6 +5940,7 @@ async function extractTextWithAI(imageSrc) {
             }
         }
     } catch (e) {
+        if(ScannerUX.cancelled)throw new Error('OCR cancelado');
         console.warn('AI OCR fallback to Tesseract:', e);
     }
     return null;
@@ -6010,7 +5969,7 @@ async function extractTextFromImage(imageSrc) {
 
         updateProgress(5, 'Carregando engine OCR local...');
 
-        const worker = await Tesseract.createWorker(['por', 'eng'], 1, {
+        const worker = await ScannerCore.createOCRWorker(['por', 'eng'], 1, {
             logger: (m) => {
                 if (m.status === 'recognizing text') {
                     const progress = Math.round(m.progress * 100);
@@ -6021,8 +5980,8 @@ async function extractTextFromImage(imageSrc) {
             }
         });
 
-        const { data: { text, confidence } } = await worker.recognize(imageSrc);
-        await worker.terminate();
+        const { data: { text, confidence } } = await ScannerCore.recognize(worker, imageSrc);
+        /* Worker released by ScannerCore.recognize */
 
         const cleanText = sanitizeReceiptOcrText(text);
 
@@ -6117,7 +6076,7 @@ async function extractText() {
 
         updateProgress(5, 'Carregando engine OCR...');
 
-        const worker = await Tesseract.createWorker(['por', 'eng'], 1, {
+        const worker = await ScannerCore.createOCRWorker(['por', 'eng'], 1, {
             logger: (m) => {
                 if (m.status === 'recognizing text') {
                     const progress = Math.round(m.progress * 100);
@@ -6133,8 +6092,8 @@ async function extractText() {
         await worker.setParameters({ tessedit_pageseg_mode: '6' });
 
         updateProgress(30, 'Processando imagem...');
-        const { data: { text, confidence } } = await worker.recognize(img.src);
-        await worker.terminate();
+        const { data: { text, confidence } } = await ScannerCore.recognize(worker, img.src);
+        /* Worker released by ScannerCore.recognize */
 
         updateProgress(100, 'Concluído!');
 
@@ -6339,7 +6298,7 @@ async function extractTextFromCurrentImage() {
 
         updateProgress(5, 'Carregando engine OCR...');
 
-        const worker = await Tesseract.createWorker(['por', 'eng'], 1, {
+        const worker = await ScannerCore.createOCRWorker(['por', 'eng'], 1, {
             logger: (m) => {
                 if (m.status === 'recognizing text') {
                     const progress = Math.round(m.progress * 100);
@@ -6353,8 +6312,8 @@ async function extractTextFromCurrentImage() {
         // PSM 6 = uniform block of text — best for typed/printed documents
         await worker.setParameters({ tessedit_pageseg_mode: '6' });
 
-        const { data: { text, confidence } } = await worker.recognize(imageDataUrl);
-        await worker.terminate();
+        const { data: { text, confidence } } = await ScannerCore.recognize(worker, imageDataUrl);
+        /* Worker released by ScannerCore.recognize */
 
         const cleanText = sanitizeReceiptOcrText(text);
 
@@ -8848,6 +8807,7 @@ async function captureLivePhoto() {
     }
 
     hideLoading();
+    if(!await ScannerUX.reviewCapture(dataUrl))return;
 
     // Check if ID Card Mode is active
     if (idCardScanState && idCardScanState.active) {

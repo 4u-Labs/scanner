@@ -4421,3 +4421,5 @@ body.theme-light {
     pointer-events: none;
     z-index: 20;
 }
+/* Scanner reliability controls */
+.scan-compare{display:grid;grid-template-columns:1fr 1fr;gap:16px}.scan-compare figure{margin:0;min-width:0}.scan-compare img{max-width:100%;max-height:65vh;object-fit:contain}.scan-compare figcaption{margin:8px;font-weight:700}#loading>.btn{margin-top:16px;pointer-events:auto}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #62adff;outline-offset:3px}@media(max-width:600px){.scan-compare{grid-template-columns:1fr}}
