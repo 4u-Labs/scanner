@@ -1,6 +1,6 @@
 /* Scanner-only offline assets. Documents and authenticated APIs are never cached. */
 const PREFIX='scanner-static:'+self.registration.scope;
-const CACHE=PREFIX+':20261013-7';
+const CACHE=PREFIX+':20261013-8';
 const FILES=['index.php','style.css','script.js','scanner-core.js','scanner-reliability.js','manifest.json','icon-192x192.png','icon-512x512.png','shutter.mp3','vendor/eng.traineddata.gz','vendor/html5-qrcode.min.js','vendor/jspdf.umd.min.js','vendor/opencv.js','vendor/pdf.min.js','vendor/pdf.worker.min.js','vendor/por.traineddata.gz','vendor/sweetalert2.all.min.js','vendor/tesseract-core-lstm.wasm','vendor/tesseract-core-lstm.wasm.js','vendor/tesseract-core-simd-lstm.wasm','vendor/tesseract-core-simd-lstm.wasm.js','vendor/tesseract-core-simd.wasm','vendor/tesseract-core-simd.wasm.js','vendor/tesseract-core.wasm','vendor/tesseract-core.wasm.js','vendor/tesseract.min.js','vendor/worker.min.js','vendor/xlsx.full.min.js'];
 const paths=new Set(FILES.map(p=>new URL(p,self.registration.scope).pathname));
 const scopePath=new URL(self.registration.scope).pathname;

@@ -301,7 +301,7 @@ function setupEventListeners() {
     if ($('galleryInput')) $('galleryInput').onchange = handleImageCapture;
 
     // Editor
-    $('closeEditorBtn').onclick = leaveEditor;
+    $('closeEditorBtn').onclick = () => closeModal('editorModal');
     $('editorDoneBtn').onclick = finishEditing;
     $$('.editor-tab').forEach(tab => tab.onclick = () => switchEditorTab(tab.dataset.tab));
 
@@ -900,34 +900,11 @@ function handleImageCapture(event) {
 // ============================================
 // Editor
 // ============================================
-let editorSource = 'file';
-
-function leaveEditor() {
-    closeModal('editorModal');
-    if (editorSource === 'camera') {
-        editorSource = 'file';
-        state.originalImage = null;
-        state.currentImage = null;
-        startLiveCamera(false);
-    }
-}
-
-function openEditor(img, source = 'file') {
-    editorSource = source;
+function openEditor(img) {
     if (img) {
         state.originalImage = img;
         state.currentImage = img;
     }
-    const isEn = currentLang === 'en';
-    $('editorTitle').textContent = source === 'camera' ? (isEn ? 'Review crop' : 'Revisar recorte') : (isEn ? 'Editor' : 'Editor');
-    $('closeEditorBtn').setAttribute('aria-label', source === 'camera' ? (isEn ? 'Retake photo' : 'Fotografar novamente') : (isEn ? 'Back' : 'Voltar'));
-    $('closeEditorBtn').title = $('closeEditorBtn').getAttribute('aria-label');
-    const cropHint = $('cropReviewHint');
-    const hintKey = source === 'camera' ? 'crop_review_camera_hint' : 'crop_review_hint';
-    cropHint.setAttribute('data-i18n', hintKey);
-    cropHint.textContent = I18N_DICT[currentLang][hintKey];
-    $('editorDoneBtn').setAttribute('aria-label', isEn ? 'Apply crop and continue' : 'Aplicar recorte e continuar');
-    $('editorDoneBtn').title = $('editorDoneBtn').getAttribute('aria-label');
     state.currentFilter = 'magic';
     $$('.filter-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.filter === 'magic'));
     openModal('editorModal');
@@ -3461,8 +3438,6 @@ const I18N_DICT = {
         menu_donate: "☕ Apoie o Projeto",
         menu_install: "Instalar App",
         install_app: "Instalar App",
-        crop_review_hint: "A área marcada será o documento final. Arraste os pontos para ajustar.",
-        crop_review_camera_hint: "A área marcada será o documento final. Arraste os pontos; toque na seta para fotografar novamente.",
         install_guide_title: "Instalar DocScan Pro",
         install_guide_intro: "Instale o DocScan Pro para abrir em tela cheia como um aplicativo nativo, com carregamento ultrarrápido e acesso offline:",
         install_guide_android: "1. Toque no menu de <strong>três pontos (⋮)</strong> no canto superior direito do Chrome.<br>2. Toque em <strong>\"Instalar aplicativo\"</strong> ou <strong>\"Adicionar à tela inicial\"</strong>.<br>3. Toque em <strong>Instalar</strong> para confirmar.",
@@ -3617,8 +3592,6 @@ const I18N_DICT = {
         menu_donate: "☕ Support Project",
         menu_install: "Install App",
         install_app: "Install App",
-        crop_review_hint: "The marked area will be the final document. Drag the corners to adjust it.",
-        crop_review_camera_hint: "The marked area will be the final document. Drag the corners; use the back arrow to retake the photo.",
         install_guide_title: "Install DocScan Pro",
         install_guide_intro: "Install DocScan Pro to open in fullscreen as a native app with ultra-fast loading and offline access:",
         install_guide_android: "1. Tap the <strong>three dots menu (⋮)</strong> at the top right of Chrome.<br>2. Tap <strong>\"Install app\"</strong> or <strong>\"Add to Home screen\"</strong>.<br>3. Tap <strong>Install</strong> to confirm.",
@@ -8999,9 +8972,7 @@ async function captureLivePhoto() {
     }
 
     hideLoading();
-    // Single scans go straight to the editor, where the actual crop is visible.
-    // Batch and ID scans still need a confirmation before collecting the next photo.
-    if ((isLiveBatchActive || idCardScanState?.active) && !await ScannerUX.reviewCapture(dataUrl)) return;
+    if(!await ScannerUX.reviewCapture(dataUrl))return;
 
     // Check if ID Card Mode is active
     if (idCardScanState && idCardScanState.active) {
@@ -9020,7 +8991,7 @@ async function captureLivePhoto() {
         img.onload = () => {
             state.originalImage = img;
             state.currentImage = img;
-            openEditor(img, 'camera');
+            openEditor(img);
         };
         img.src = dataUrl;
     }
