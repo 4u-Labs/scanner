@@ -1,6 +1,8 @@
-api/
+api/*
+!api/auth.php
+!api/check_bonus.php
+!api/google_auth_verification.php
 .env
-auth.php
 *.db
 *.sqlite
 *.log

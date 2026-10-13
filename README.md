@@ -26,7 +26,7 @@ O **DocScan Pro** é uma solução completa de digitalização e processamento d
 * ✍️ **Assinatura Touch & Carimbos:** Assinador digital integrado na tela com ajuste de espessura/cor, carimbos personalizáveis e tarjas de segurança.
 * 🖨️ **Impressão Térmica 80mm & PDF:** Geração de bobinas para impressoras térmicas (Bematech MP-4200 TH / ESC-POS) e pranchas multipáginas em PDF.
 * ☁️ **Google Drive & Pagamentos:** Sincronização direta com Google Drive e compra de créditos IA via PIX e PayPal.
-* 📱 **PWA & Offline Ready:** Funciona como app nativo com suporte offline completo e privacidade total (Zero-Retention).
+* 📱 **PWA & Acesso Offline:** Documentos salvos localmente permanecem disponíveis; bibliotecas externas e recursos de IA/Drive exigem conexão. O envio a serviços externos ocorre quando esses recursos são usados.
 
 ---
 

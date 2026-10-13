@@ -12,7 +12,7 @@ if (!str_ends_with($path, "/") && !pathinfo($path, PATHINFO_EXTENSION)) {
     header("Location: $target", true, 301);
     exit;
 }
-$v = 'scanner-20261011-1';
+$v = 'scanner-20261013-1';
 $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
 ?>
 <!DOCTYPE html>
@@ -1386,8 +1386,8 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
 
                 <div style="background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px; text-align: left; font-size: 12px; color: var(--text-muted); display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px;">
                     <div>💎 <strong>100% Gratuito:</strong> Scanner, filtros, assinatura e PDF são gratuitos. Pagamentos apenas para IA (OCR).</div>
-                    <div>🔒 <strong>Privacidade:</strong> 100% dos dados ficam no seu dispositivo</div>
-                    <div>⚡ <strong>Modo Offline:</strong> Funciona sem conexão à internet</div>
+                    <div>🔒 <strong>Privacidade:</strong> documentos ficam no dispositivo por padrão; Drive e recursos de IA enviam dados aos serviços escolhidos quando utilizados</div>
+                    <div>⚡ <strong>Modo Offline:</strong> arquivos já carregados podem ser acessados sem conexão; bibliotecas externas, IA e sincronização exigem internet</div>
                     <div>🖨️ <strong>Térmica:</strong> Integrado com Bematech MP-4200 TH</div>
                     <div>✨ <strong>Desenvolvido por:</strong> <a href="https://4u.ia.br" target="_blank" style="color: var(--accent-secondary); text-decoration: none; font-weight: 600;">4u.ia.br</a></div>
                     <div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; gap: 14px; font-size: 11px;">
@@ -1411,8 +1411,8 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
 
                 <div style="background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px; text-align: left; font-size: 12px; color: var(--text-muted); display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px;">
                     <div>💎 <strong>100% Free:</strong> Scanner, filters, signing, and PDF are free. Payments are strictly for AI processing (OCR).</div>
-                    <div>🔒 <strong>Privacy:</strong> 100% of data remains on your device</div>
-                    <div>⚡ <strong>Offline Mode:</strong> Works without an internet connection</div>
+                    <div>🔒 <strong>Privacy:</strong> documents stay on your device by default; Drive and AI features send data to the selected services when used</div>
+                    <div>⚡ <strong>Offline Mode:</strong> previously loaded files can be accessed offline; external libraries, AI and sync require internet</div>
                     <div>🖨️ <strong>Thermal:</strong> Integrated with Bematech MP-4200 TH</div>
                     <div>✨ <strong>Developed by:</strong> <a href="https://4u.ia.br" target="_blank" style="color: var(--accent-secondary); text-decoration: none; font-weight: 600;">4u.ia.br</a></div>
                     <div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; gap: 14px; font-size: 11px;">

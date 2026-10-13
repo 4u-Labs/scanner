@@ -1,6 +1,6 @@
 /* Scanner-only offline assets. Documents and authenticated APIs are never cached. */
 const PREFIX='scanner-static:'+self.registration.scope;
-const CACHE=PREFIX+':20261011-1';
+const CACHE=PREFIX+':20261013-1';
 const FILES=['index.php','style.css','script.js','scanner-core.js','scanner-reliability.js','manifest.json','icon-192x192.png','icon-512x512.png','shutter.mp3'];
 const paths=new Set(FILES.map(p=>new URL(p,self.registration.scope).pathname));
 self.addEventListener('install',event=>event.waitUntil((async()=>{const cache=await caches.open(CACHE);try{await cache.addAll(FILES.map(p=>new Request(new URL(p,self.registration.scope),{cache:'reload'})));}catch(e){await caches.delete(CACHE);throw e;}})()));

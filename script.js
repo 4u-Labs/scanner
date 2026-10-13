@@ -96,7 +96,8 @@ async function initApp() {
             try {
                 state.googleProfile = JSON.parse(savedProfile);
                 updateUserProfileUI(state.googleProfile);
-                autoLoginWithGoogleProfile(state.googleProfile);
+                // A saved profile is display-only; server login requires a live Google token.
+                if (state.driveToken) autoLoginWithGoogleProfile(state.googleProfile, state.driveToken);
                 if (state.driveToken) {
                     setTimeout(() => syncGoogleDriveTwoWay(true), 1200);
                 }
@@ -455,6 +456,12 @@ window.triggerPwaInstall = triggerPwaInstall;
 // ============================================
 // UI Updates
 // ============================================
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[char]);
+}
+
 function updateUI() {
     updateDocumentsGrid();
     updateBreadcrumb();
@@ -495,15 +502,13 @@ function updateDocumentsGrid() {
         const isSelected = state.selectedItems.includes(`folder_${folder.id}`);
         html += `
             <div class="doc-item folder ${isSelected ? 'selected' : ''} ${folder.isLocked ? 'locked' : ''}" 
-                 data-type="folder" data-id="${folder.id}" style="animation-delay: ${i * 0.05}s"
-                 onclick="handleItemClick(event, 'folder', '${folder.id}')"
-                 oncontextmenu="showContextMenu(event, 'folder', '${folder.id}')">
+                 data-type="folder" data-id="${escapeHtml(folder.id)}" style="animation-delay: ${i * 0.05}s">
                 <div class="doc-checkbox">
                     <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
                 </div>
                 <div class="folder-icon">${folder.isLocked ? '🔒' : '📁'}</div>
-                <div class="folder-name">${folder.name}</div>
-                <button class="doc-menu-btn" onclick="event.stopPropagation(); showContextMenu(event, 'folder', '${folder.id}')" aria-label="Opções da pasta">
+                <div class="folder-name">${escapeHtml(folder.name)}</div>
+                <button class="doc-menu-btn" aria-label="Opções da pasta">
                     <svg viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
                 </button>
             </div>
@@ -516,19 +521,17 @@ function updateDocumentsGrid() {
         const date = new Date(doc.date).toLocaleDateString(currentLang === 'en' ? 'en-US' : 'pt-BR');
         html += `
             <div class="doc-item ${isSelected ? 'selected' : ''}" 
-                 data-type="doc" data-id="${doc.id}" style="animation-delay: ${(folders.length + i) * 0.05}s"
-                 onclick="handleItemClick(event, 'doc', '${doc.id}')"
-                 oncontextmenu="showContextMenu(event, 'doc', '${doc.id}')">
+                 data-type="doc" data-id="${escapeHtml(doc.id)}" style="animation-delay: ${(folders.length + i) * 0.05}s">
                 <div class="doc-checkbox">
                     <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
                 </div>
                 ${doc.favorite ? '<div class="doc-favorite"><svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg></div>' : ''}
-                <img class="doc-thumbnail" src="${doc.thumbnail || doc.image}" alt="${doc.name}" loading="lazy">
+                <img class="doc-thumbnail" src="${escapeHtml(doc.thumbnail || doc.image)}" alt="${escapeHtml(doc.name)}" loading="lazy">
                 <div class="doc-info">
-                    <div class="doc-name">${doc.name}</div>
+                    <div class="doc-name">${escapeHtml(doc.name)}</div>
                     <div class="doc-date">${date}</div>
                 </div>
-                <button class="doc-menu-btn" onclick="event.stopPropagation(); showContextMenu(event, 'doc', '${doc.id}')">
+                <button class="doc-menu-btn">
                     <svg viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
                 </button>
             </div>
@@ -536,6 +539,16 @@ function updateDocumentsGrid() {
     });
 
     grid.innerHTML = html;
+    grid.querySelectorAll('.doc-item').forEach(item => {
+        const type = item.dataset.type;
+        const id = item.dataset.id;
+        item.addEventListener('click', event => handleItemClick(event, type, id));
+        item.addEventListener('contextmenu', event => showContextMenu(event, type, id));
+        item.querySelector('.doc-menu-btn')?.addEventListener('click', event => {
+            event.stopPropagation();
+            showContextMenu(event, type, id);
+        });
+    });
     grid.classList.toggle('select-mode', state.selectMode);
     grid.classList.toggle('list-view', state.viewMode === 'list');
 
@@ -561,14 +574,17 @@ function updateBreadcrumb() {
             html += `
                 <span style="color: var(--text-muted)">›</span>
                 <button class="breadcrumb-item ${isActive ? 'active' : ''}" 
-                        data-folder="${folder.id}" onclick="navigateToFolder('${folder.id}')">
-                    <span>${folder.name}</span>
+                        data-folder="${escapeHtml(folder.id)}">
+                    <span>${escapeHtml(folder.name)}</span>
                 </button>
             `;
         });
     }
 
     nav.innerHTML = html;
+    nav.querySelectorAll('button[data-folder]').forEach(button => {
+        button.onclick = () => navigateToFolder(button.dataset.folder);
+    });
 }
 
 function getFolderPath(folderId) {
@@ -602,7 +618,7 @@ function updateFolderSelect() {
     let html = `<option value="root">${currentLang === 'en' ? 'Root' : 'Raiz'}</option>`;
 
     state.folders.forEach(folder => {
-        html += `<option value="${folder.id}">${folder.name}</option>`;
+        html += `<option value="${escapeHtml(folder.id)}">${escapeHtml(folder.name)}</option>`;
     });
 
     select.innerHTML = html;
@@ -2229,7 +2245,7 @@ function updatePagesGrid() {
             <div class="page-drag-handle" title="Arrastar para reordenar">
                 <svg viewBox="0 0 24 24"><path d="M11 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm-2-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
             </div>
-            <img src="${img}" alt="Página ${i + 1}">
+            <img src="${escapeHtml(img)}" alt="Página ${i + 1}">
             <span class="page-number">${i + 1}</span>
             <button class="page-remove" onclick="removePage(${i})">
                 <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
@@ -4558,14 +4574,17 @@ function openMoveModal(type, id) {
     state.folders.forEach(folder => {
         if (type === 'folder' && folder.id === id) return;
         html += `
-            <div class="folder-list-item" onclick="moveToFolder('${folder.id}')">
+            <div class="folder-list-item" data-folder-id="${escapeHtml(folder.id)}">
                 <span class="folder-icon">📁</span>
-                <span>${folder.name}</span>
+                <span>${escapeHtml(folder.name)}</span>
             </div>
         `;
     });
 
     list.innerHTML = html;
+    list.querySelectorAll('[data-folder-id]').forEach(item => {
+        item.onclick = () => moveToFolder(item.dataset.folderId);
+    });
     openModal('moveModal');
 }
 
@@ -4701,32 +4720,18 @@ function initGoogleDriveClient() {
     }
 }
 
-async function autoLoginWithGoogleProfile(profile) {
-    if (!profile || !profile.email) return;
+async function autoLoginWithGoogleProfile(profile, accessToken) {
+    if (!profile || !profile.email || !accessToken) return;
     try {
-        let resp = await fetch('api/auth.php?action=google', {
+        const resp = await fetch('api/auth.php?action=google', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                email: profile.email,
-                name: profile.name || '',
-                picture: profile.picture || ''
+                access_token: accessToken
             })
-        }).catch(() => null);
-
-        if (!resp || !resp.ok) {
-            resp = await fetch('../keepai/api/auth.php?action=google', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email: profile.email,
-                    name: profile.name || '',
-                    picture: profile.picture || ''
-                })
-            });
-        }
+        });
         const data = await resp.json();
-        if (data.success && data.token) {
+        if (resp.ok && data.success && data.token) {
             localStorage.setItem('keepai_token', data.token);
             state.token = data.token;
             state.credits = data.user.credits;
@@ -4755,7 +4760,7 @@ async function fetchGoogleUserProfile(token) {
             state.googleProfile = profile;
             localStorage.setItem('googleUserProfile', JSON.stringify(profile));
             updateUserProfileUI(profile);
-            await autoLoginWithGoogleProfile(profile);
+            await autoLoginWithGoogleProfile(profile, token);
 
             const isVip = profile.email && (profile.email.toLowerCase() === 'fbr4g4@gmail.com' || profile.email.toLowerCase() === 'fb4g4@gmail.com');
             if (!isVip) {
@@ -4865,9 +4870,10 @@ async function connectGoogleDrive() {
 async function showDriveOptionsModal() {
     const isEn = (typeof currentLang !== 'undefined' && currentLang === 'en');
     const profile = state.googleProfile || JSON.parse(localStorage.getItem('googleUserProfile') || '{}');
-    const avatarHtml = profile.picture ? `<img src="${profile.picture}" style="width:52px;height:52px;border-radius:50%;margin-bottom:8px;border:2px solid #38bdf8;">` : '';
-    const nameHtml = profile.name ? `<div style="font-weight:bold;color:#fff;font-size:15px;">${profile.name}</div>` : '';
-    const emailHtml = profile.email ? `<div style="font-size:12px;color:rgba(255,255,255,0.7);">${profile.email}</div>` : '';
+    const avatarHtml = profile.picture && /^https:\/\/(?:lh3\.)?googleusercontent\.com\//.test(profile.picture)
+        ? `<img src="${escapeHtml(profile.picture)}" style="width:52px;height:52px;border-radius:50%;margin-bottom:8px;border:2px solid #38bdf8;">` : '';
+    const nameHtml = profile.name ? `<div style="font-weight:bold;color:#fff;font-size:15px;">${escapeHtml(profile.name)}</div>` : '';
+    const emailHtml = profile.email ? `<div style="font-size:12px;color:rgba(255,255,255,0.7);">${escapeHtml(profile.email)}</div>` : '';
 
     const result = await Swal.fire({
         title: isEn ? 'Google Drive Connected ☁️' : 'Google Drive Conectado ☁️',

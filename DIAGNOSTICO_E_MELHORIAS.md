@@ -1,6 +1,8 @@
 # Diagnóstico Profundo & Roadmap de Evolução Global
 ## DocScan Pro — Da Liderança Web/PWA ao Topo do Mercado Mundial
 
+> **Nota de atualização — 2026-10-13:** este roadmap foi escrito antes das implementações atuais. Auto captura, lupa, lanterna e importação de PDF já existem em `script.js`/`index.php`; as marcações "Pendente" abaixo são históricas. Antes de novas funções, priorizar testes de segurança, compatibilidade móvel, limites de memória em PDFs extensos e revisão das promessas de privacidade/offline.
+
 ---
 
 ## 1. Resumo Executivo & Posicionamento de Mercado
