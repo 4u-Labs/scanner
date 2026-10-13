@@ -12,7 +12,7 @@ if (!str_ends_with($path, "/") && !pathinfo($path, PATHINFO_EXTENSION)) {
     header("Location: $target", true, 301);
     exit;
 }
-$v = 'scanner-20261013-9';
+$v = 'scanner-20261013-10';
 $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
 ?>
 <!DOCTYPE html>
@@ -570,6 +570,11 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
 
             <!-- Crop Tools -->
             <div id="cropTools" class="editor-tools">
+                <p class="crop-guidance" data-i18n="crop_guidance">Arraste os quatro pontos para cortar. A área marcada será o documento final.</p>
+                <div class="tool-actions crop-rotate-actions">
+                    <button id="cropRotateLeftBtn" class="tool-btn" type="button" data-i18n="rotate_left">↶ Girar 90°</button>
+                    <button id="cropRotateRightBtn" class="tool-btn" type="button" data-i18n="rotate_right">↷ Girar 90°</button>
+                </div>
                 <div class="tool-group">
                     <span class="tool-label">Proporção:</span>
                     <div class="ratio-buttons">
@@ -595,6 +600,7 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
                         <span>Resetar</span>
                     </button>
                 </div>
+                <button id="useFullImageBtn" class="tool-btn crop-full-image-btn" type="button" data-i18n="use_full_image">Usar foto inteira</button>
             </div>
 
             <!-- Filter Tools -->

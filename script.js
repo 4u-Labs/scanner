@@ -309,6 +309,9 @@ function setupEventListeners() {
     $$('#cropTools .ratio-btn').forEach(btn => btn.onclick = () => setRatio(btn.dataset.ratio));
     $('autoDetectBtn').onclick = autoDetectEdges;
     $('resetCropBtn').onclick = resetCrop;
+    $('cropRotateLeftBtn').onclick = () => rotateImage(-90);
+    $('cropRotateRightBtn').onclick = () => rotateImage(90);
+    $('useFullImageBtn').onclick = useFullImage;
 
     // Filter Tools
     $$('.filter-btn').forEach(btn => btn.onclick = () => applyFilter(btn.dataset.filter));
@@ -1220,6 +1223,16 @@ function resetCrop() {
     updateCropOverlay();
 }
 
+function useFullImage() {
+    state.cropPoints = {
+        tl: { x: 0, y: 0 }, tr: { x: 100, y: 0 },
+        bl: { x: 0, y: 100 }, br: { x: 100, y: 100 }
+    };
+    state.currentRatio = 'free';
+    $$('#cropTools .ratio-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.ratio === 'free'));
+    updateCropOverlay();
+}
+
 // ============================================
 // Auto Edge Detection — Canny-based pipeline
 // ============================================
@@ -1650,11 +1663,26 @@ function applyFilterToCanvas(filterName) {
 // ============================================
 // Image Adjustments
 // ============================================
+let rotatingImage = false;
 function rotateImage(degrees) {
+    if (rotatingImage || (degrees !== 90 && degrees !== -90)) return;
+    rotatingImage = true;
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
 
     const img = state.currentImage;
+    if (!img) { rotatingImage = false; return; }
+    const previous = state.cropPoints;
+    const rotatePoint = degrees === 90
+        ? p => ({ x: 100 - p.y, y: p.x })
+        : p => ({ x: p.y, y: 100 - p.x });
+    const rotatedCrop = degrees === 90 ? {
+        tl: rotatePoint(previous.bl), tr: rotatePoint(previous.tl),
+        br: rotatePoint(previous.tr), bl: rotatePoint(previous.br)
+    } : {
+        tl: rotatePoint(previous.tr), tr: rotatePoint(previous.br),
+        br: rotatePoint(previous.bl), bl: rotatePoint(previous.tl)
+    };
 
     if (degrees === 90 || degrees === -90) {
         canvas.width = img.height;
@@ -1672,10 +1700,17 @@ function rotateImage(degrees) {
     newImg.onload = () => {
         state.currentImage = newImg;
         state.originalImage = newImg;
+        state.cropPoints = rotatedCrop;
+        state.currentRatio = 'free';
+        $$('#cropTools .ratio-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.ratio === 'free'));
+        rotatingImage = false;
         drawImageToCanvas();
-        resetCrop();
     };
-    newImg.src = canvas.toDataURL('image/jpeg', 0.9);
+    newImg.onerror = () => {
+        rotatingImage = false;
+        showToast('Não foi possível girar a imagem.', 'error');
+    };
+    newImg.src = canvas.toDataURL('image/jpeg', 0.98);
 }
 
 // ============================================
@@ -3488,6 +3523,10 @@ const I18N_DICT = {
         gallery: "Galeria",
         id_card_mode: "🪪 Modo RG / CNH (2 Lados em 1 A4)",
         crop: "Cortar",
+        crop_guidance: "Arraste os quatro pontos para cortar. A área marcada será o documento final.",
+        rotate_left: "↶ Girar 90°",
+        rotate_right: "↷ Girar 90°",
+        use_full_image: "Usar foto inteira",
         filters: "Filtros",
         adjust: "Ajustar",
         signature: "✍️ Assinar",
@@ -3642,6 +3681,10 @@ const I18N_DICT = {
         gallery: "Gallery",
         id_card_mode: "🪪 ID Card / License (2 Sides in 1 A4)",
         crop: "Crop",
+        crop_guidance: "Drag the four corners to crop. The marked area becomes the final document.",
+        rotate_left: "↶ Rotate 90°",
+        rotate_right: "↷ Rotate 90°",
+        use_full_image: "Use full photo",
         filters: "Filters",
         adjust: "Adjust",
         signature: "✍️ Signature",

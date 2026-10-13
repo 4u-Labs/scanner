@@ -1289,6 +1289,22 @@ body {
     -webkit-overflow-scrolling: touch;
 }
 
+.crop-guidance {
+    margin: 0 0 10px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 1.35;
+}
+
+.crop-rotate-actions {
+    margin-bottom: 12px;
+}
+
+.crop-full-image-btn {
+    width: 100%;
+    margin-top: 12px;
+}
+
 .tool-group {
     margin-bottom: 12px;
 }
