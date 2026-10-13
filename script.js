@@ -21,6 +21,10 @@ const state = {
     contextTarget: null,
     editingDocId: null,
     searchQuery: '',
+    searchFolder: 'all',
+    searchType: 'all',
+    searchDateFrom: '',
+    searchDateTo: '',
     sortBy: 'date-desc',
     viewMode: 'grid',
     theme: 'dark',
@@ -173,18 +177,16 @@ function initDB() {
 }
 
 async function loadData() {
+    localStorage.removeItem('keepai_token'); // remove legacy persistent bearer token
     state.documents = await getAllFromStore('documents');
     state.folders = await getAllFromStore('folders');
     state.pendingUploads = await getAllFromStore('pending');
 
-    state.token = localStorage.getItem('keepai_token') || null;
+    state.token = sessionStorage.getItem('keepai_token') || null;
     state.credits = 0;
 
-    const driveSettings = await getFromStore('settings', 'driveToken');
-    if (driveSettings) {
-        state.driveToken = driveSettings.value;
-        state.driveConnected = true;
-    }
+    // OAuth access tokens expire quickly and should not survive a browser session.
+    await deleteFromStore('settings', 'driveToken');
 
     // Load app settings
     const appSettings = await getFromStore('settings', 'appSettings');
@@ -463,6 +465,7 @@ function escapeHtml(value) {
 }
 
 function updateUI() {
+    updateSearchFolderFilter();
     updateDocumentsGrid();
     updateBreadcrumb();
     updateSelectionBar();
@@ -477,8 +480,10 @@ function updateDocumentsGrid() {
     const grid = $('documentsGrid');
     const emptyState = $('emptyState');
 
-    const folders = state.folders.filter(f => f.parent === state.currentFolder);
-    let docs = state.documents.filter(d => d.folder === state.currentFolder);
+    const searching = !!state.searchQuery || state.searchFolder !== 'all' ||
+        state.searchType !== 'all' || !!state.searchDateFrom || !!state.searchDateTo;
+    const folders = searching ? [] : state.folders.filter(f => f.parent === state.currentFolder);
+    let docs = searching ? state.documents : state.documents.filter(d => d.folder === state.currentFolder);
 
     // Apply search filter
     docs = filterDocuments(docs);
@@ -1960,7 +1965,7 @@ function showMultiPageDialog(croppedImage) {
     overlay.innerHTML = `
         <div class="multipage-dialog">
             <div class="multipage-dialog-preview">
-                <img src="${croppedImage}" alt="Prévia">
+                <img src="${escapeHtml(croppedImage)}" alt="Prévia">
             </div>
             <h3>Documento escaneado!</h3>
             <p>O que deseja fazer?</p>
@@ -2862,7 +2867,7 @@ async function handleContextAction(action) {
             if (type === 'doc') {
                 const doc = state.documents.find(d => d.id === id);
                 if (doc && doc.image) {
-                    extractTextFromImage(doc.image);
+                    extractTextFromImage(doc.image, doc.id);
                 }
             }
             break;
@@ -4502,7 +4507,16 @@ function startRealtimeEdgeTracking() {
                                 const docW = Math.hypot(corners.tr.x - corners.tl.x, corners.tr.y - corners.tl.y);
                                 const docH = Math.hypot(corners.bl.x - corners.tl.x, corners.bl.y - corners.tl.y);
 
-                                if (maxDiff < AUTO_CAPTURE_MAX_DIFF && docW > 20 && docH > 20) {
+                                let frameLegible = true;
+                                if (autoCaptureStabilityCounter >= 6) {
+                                    const quality = ScannerCore.quality(
+                                        ctx.getImageData(0, 0, 320, 240).data, 320, 240);
+                                    frameLegible = quality.mean >= 55 && quality.mean <= 225 &&
+                                        quality.sharpness >= 35 && quality.bright < 0.45;
+                                    if (!frameLegible && hintText) hintText.textContent =
+                                        quality.mean < 55 ? '💡 Mais luz para capturar' : '📷 Ajuste o foco e evite reflexos';
+                                }
+                                if (maxDiff < AUTO_CAPTURE_MAX_DIFF && docW > 20 && docH > 20 && frameLegible) {
                                     autoCaptureStabilityCounter++;
                                     if (hintText) {
                                         const pct = Math.min(100, Math.round((autoCaptureStabilityCounter / AUTO_CAPTURE_STABLE_FRAMES) * 100));
@@ -4701,7 +4715,7 @@ function initGoogleDriveClient() {
                 if (tokenResponse && tokenResponse.access_token) {
                     state.driveToken = tokenResponse.access_token;
                     state.driveConnected = true;
-                    saveToStore('settings', { key: 'driveToken', value: tokenResponse.access_token });
+                    // OAuth token intentionally kept in memory only.
                     
                     await fetchGoogleUserProfile(tokenResponse.access_token);
                     updateDriveStatus();
@@ -4732,7 +4746,7 @@ async function autoLoginWithGoogleProfile(profile, accessToken) {
         });
         const data = await resp.json();
         if (resp.ok && data.success && data.token) {
-            localStorage.setItem('keepai_token', data.token);
+            sessionStorage.setItem('keepai_token', data.token);
             state.token = data.token;
             state.credits = data.user.credits;
             state.user = data.user;
@@ -5715,6 +5729,26 @@ $('searchInput')?.addEventListener('input', (e) => {
     updateUI();
 });
 
+function updateSearchFolderFilter() {
+    const select = $('searchFolderFilter');
+    if (!select) return;
+    const selected = select.value || state.searchFolder;
+    select.replaceChildren(new Option('Todas as pastas', 'all'));
+    for (const folder of state.folders) select.add(new Option(folder.name, folder.id));
+    select.value = selected;
+}
+for (const [id, stateKey] of [
+    ['searchFolderFilter', 'searchFolder'],
+    ['searchTypeFilter', 'searchType'],
+    ['searchDateFrom', 'searchDateFrom'],
+    ['searchDateTo', 'searchDateTo']
+]) {
+    $(id)?.addEventListener('change', event => {
+        state[stateKey] = event.target.value;
+        updateUI();
+    });
+}
+
 // ============================================
 // Sort Functionality
 // ============================================
@@ -5745,12 +5779,19 @@ function sortDocuments(docs) {
 }
 
 function filterDocuments(docs) {
-    if (!state.searchQuery) return docs;
-
-    return docs.filter(doc =>
-        doc.name.toLowerCase().includes(state.searchQuery) ||
-        (doc.tags && doc.tags.some(tag => tag.toLowerCase().includes(state.searchQuery)))
-    );
+    return docs.filter(doc => {
+        if (state.searchFolder !== 'all' && doc.folder !== state.searchFolder) return false;
+        const isPdf = doc.format === 'pdf' || doc.fileBlob?.type === 'application/pdf';
+        if (state.searchType === 'pdf' && !isPdf) return false;
+        if (state.searchType === 'image' && isPdf) return false;
+        const date = String(doc.date || '').slice(0, 10);
+        if (state.searchDateFrom && date < state.searchDateFrom) return false;
+        if (state.searchDateTo && date > state.searchDateTo) return false;
+        if (!state.searchQuery) return true;
+        const haystack = [doc.name, doc.ocrText, ...(doc.tags || [])]
+            .filter(value => typeof value === 'string').join(' ').toLocaleLowerCase();
+        return haystack.includes(state.searchQuery);
+    });
 }
 
 // ============================================
@@ -5952,7 +5993,15 @@ async function extractTextWithAI(imageSrc) {
     return null;
 }
 
-async function extractTextFromImage(imageSrc) {
+async function rememberOcrText(docId, text) {
+    if (!docId || !text) return;
+    const doc = state.documents.find(item => item.id === docId);
+    if (!doc || doc.sealed) return;
+    doc.ocrText = text.slice(0, 100000);
+    await saveToStore('documents', doc);
+}
+
+async function extractTextFromImage(imageSrc, docId = null) {
     showLoadingWithProgress('Iniciando OCR...');
 
     try {
@@ -5962,6 +6011,7 @@ async function extractTextFromImage(imageSrc) {
         if (aiText && aiText.length > 0) {
             $('ocrText').value = aiText;
             state.lastOcrText = aiText;
+            await rememberOcrText(docId, aiText);
             hideLoading();
             openModal('ocrModal');
             showToast('Texto extraído com Inteligência Artificial! ✨', 'success');
@@ -5999,6 +6049,7 @@ async function extractTextFromImage(imageSrc) {
 
         $('ocrText').value = cleanText;
         state.lastOcrText = cleanText;
+        await rememberOcrText(docId, cleanText);
         hideLoading();
         openModal('ocrModal');
         deductCredit();
@@ -6069,6 +6120,7 @@ async function extractText() {
         if (aiText && aiText.length > 0) {
             $('ocrText').value = aiText;
             state.lastOcrText = aiText;
+            await rememberOcrText(state.viewerDoc?.id, aiText);
             hideLoading();
             openModal('ocrModal');
             showToast('Texto extraído com Inteligência Artificial! ✨', 'success');
@@ -6113,6 +6165,7 @@ async function extractText() {
 
         $('ocrText').value = cleanText;
         state.lastOcrText = cleanText;
+        await rememberOcrText(state.viewerDoc?.id, cleanText);
         hideLoading();
         openModal('ocrModal');
         deductCredit();
@@ -6683,85 +6736,150 @@ async function showBackupOptions() {
     toggleSideMenu(false);
 }
 
+async function rawBackupRecords(storeName) {
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(storeName, 'readonly');
+        const request = tx.objectStore(storeName).getAll();
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+async function backupChecksum(text) {
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+    return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
 async function exportBackup() {
     showLoading(t('exporting_data') || 'Exportando dados...');
-
     try {
-        const backup = {
-            version: '2.0.0',
-            timestamp: new Date().toISOString(),
-            documents: state.documents,
-            folders: state.folders,
+        const payload = {
+            documents: await ScannerCore.pack(await rawBackupRecords('documents')),
+            folders: await ScannerCore.pack(await rawBackupRecords('folders')),
             settings: state.settings
         };
-
-        const json = JSON.stringify(backup, null, 2);
-        const blob = new Blob([json], { type: 'application/json' });
+        const serialized = JSON.stringify(payload);
+        if (serialized.length > 150 * 1024 * 1024) {
+            throw new Error('Backup muito grande para exportar neste navegador. Exporte os PDFs separadamente.');
+        }
+        const backup = {
+            format: 'docscan-backup', version: 3,
+            createdAt: new Date().toISOString(), payload,
+            sha256: await backupChecksum(serialized)
+        };
+        const blob = new Blob([JSON.stringify(backup)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
-
         const link = document.createElement('a');
         link.href = url;
         link.download = `docscan-backup-${formatTimestamp(new Date())}.json`;
         document.body.appendChild(link);
         link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-
-        hideLoading();
-        showToast(t('backup_exported_success') || 'Backup exportado com sucesso!', 'success');
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        showToast(`Backup criado com ${payload.documents.length} documentos. Guarde o arquivo em local seguro.`, 'success');
     } catch (error) {
+        showToast(error.message || t('backup_exported_error'), 'error');
+    } finally {
         hideLoading();
-        showToast(t('backup_exported_error') || 'Erro ao exportar backup', 'error');
     }
+}
+
+function validateBackupRecords(documents, folders) {
+    if (!Array.isArray(documents) || !Array.isArray(folders) ||
+        documents.length > 5000 || folders.length > 1000) {
+        throw new Error('Backup inválido ou grande demais.');
+    }
+    const folderIds = new Set();
+    for (const folder of folders) {
+        if (!folder || typeof folder.id !== 'string' || !folder.id ||
+            typeof folder.name !== 'string' || folder.name.length > 255 || folderIds.has(folder.id)) {
+            throw new Error('O backup contém pastas inválidas ou duplicadas.');
+        }
+        folderIds.add(folder.id);
+    }
+    const docIds = new Set();
+    for (const doc of documents) {
+        if (!doc || typeof doc.id !== 'string' || !doc.id ||
+            typeof doc.name !== 'string' || doc.name.length > 255 || docIds.has(doc.id) ||
+            (!doc.sealed && !doc.image && !doc.pages?.length)) {
+            throw new Error('O backup contém documentos incompletos ou duplicados.');
+        }
+        docIds.add(doc.id);
+        if (doc.folder && doc.folder !== 'root' && !folderIds.has(doc.folder) &&
+            !state.folders.some(folder => folder.id === doc.folder)) {
+            throw new Error('Um documento aponta para uma pasta inexistente.');
+        }
+    }
+    for (const folder of folders) {
+        if (folder.parent && folder.parent !== 'root' && !folderIds.has(folder.parent) &&
+            !state.folders.some(existing => existing.id === folder.parent)) {
+            throw new Error('Uma pasta aponta para uma pasta inexistente.');
+        }
+    }
+}
+
+async function commitBackupRecords(documents, folders, settings) {
+    await new Promise((resolve, reject) => {
+        const tx = db.transaction(['documents', 'folders', 'settings'], 'readwrite');
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error || new Error('Restauração cancelada.'));
+        for (const folder of folders) tx.objectStore('folders').put(folder);
+        for (const doc of documents) tx.objectStore('documents').put(doc);
+        if (settings) tx.objectStore('settings').put({ key: 'appSettings', value: settings });
+    });
 }
 
 function importBackup() {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.json';
-
-    input.onchange = async (e) => {
-        const file = e.target.files[0];
+    input.accept = '.json,application/json';
+    input.onchange = async event => {
+        const file = event.target.files?.[0];
         if (!file) return;
-
+        if (file.size > 200 * 1024 * 1024) {
+            showToast('Backup grande demais para importar no navegador.', 'warning');
+            return;
+        }
         showLoading(t('importing_data') || 'Importando dados...');
-
         try {
-            const text = await file.text();
-            const backup = JSON.parse(text);
-
-            if (!backup.version || !backup.documents) {
-                throw new Error(currentLang === 'en' ? 'Invalid backup file' : 'Arquivo de backup inválido');
+            const backup = JSON.parse(await file.text());
+            let documents, folders, settings;
+            if (backup.format === 'docscan-backup' && backup.version === 3) {
+                const payload = backup.payload;
+                if (!payload || typeof backup.sha256 !== 'string' ||
+                    await backupChecksum(JSON.stringify(payload)) !== backup.sha256) {
+                    throw new Error('A verificação de integridade falhou. O backup pode estar incompleto.');
+                }
+                documents = await ScannerCore.unpack(payload.documents);
+                folders = await ScannerCore.unpack(payload.folders);
+                settings = payload.settings;
+            } else if (backup.version && Array.isArray(backup.documents) && Array.isArray(backup.folders)) {
+                // Compatible with earlier JSON backups containing actual image data URLs.
+                documents = backup.documents;
+                folders = backup.folders;
+                settings = backup.settings;
+            } else {
+                throw new Error('Formato de backup não reconhecido.');
             }
-
-            // Restore data
-            for (const doc of backup.documents) {
-                await saveToStore('documents', doc);
-            }
-
-            for (const folder of backup.folders) {
-                await saveToStore('folders', folder);
-            }
-
-            if (backup.settings) {
-                await saveToStore('settings', {
-                    key: 'appSettings',
-                    value: backup.settings
-                });
-            }
-
-            // Reload
+            validateBackupRecords(documents, folders);
+            const overwritten = documents.filter(doc => state.documents.some(current => current.id === doc.id)).length;
+            const detail = `${documents.length} documentos e ${folders.length} pastas serão restaurados.` +
+                (overwritten ? ` ${overwritten} documentos existentes serão substituídos.` : '');
+            hideLoading();
+            if (!confirm(`${detail} Continuar?`)) return;
+            showLoading('Restaurando registros...');
+            await commitBackupRecords(documents, folders, settings);
             await loadData();
             updateUI();
-
-            hideLoading();
             showToast(t('backup_imported_success') || 'Backup importado com sucesso!', 'success');
         } catch (error) {
+            showToast(error.message || t('backup_imported_error'), 'error');
+        } finally {
             hideLoading();
-            showToast(t('backup_imported_error') || 'Erro ao importar backup', 'error');
+            input.value = '';
         }
     };
-
     input.click();
 }
 
@@ -6969,7 +7087,7 @@ window.toggleFavorite = toggleFavorite;
 // ============================================
 
 async function syncCredits() {
-    state.token = localStorage.getItem('keepai_token') || null;
+    state.token = sessionStorage.getItem('keepai_token') || null;
     if (!state.token) {
         updateCreditsUI();
         return;
@@ -7087,7 +7205,7 @@ async function quickLoginAdmin() {
         hideLoading();
 
         if (data.success && data.token) {
-            localStorage.setItem('keepai_token', data.token);
+            sessionStorage.setItem('keepai_token', data.token);
             state.token = data.token;
             state.credits = data.user.credits;
             state.user = data.user;
@@ -7199,7 +7317,7 @@ async function handleAuthSubmit(event, isLoginMode) {
         const data = await resp.json();
 
         if (data.success && data.token) {
-            localStorage.setItem('keepai_token', data.token);
+            sessionStorage.setItem('keepai_token', data.token);
             state.token = data.token;
             state.credits = data.user.credits;
             state.user = data.user;
@@ -7476,7 +7594,7 @@ function renderPixPaymentScreen(data) {
     content.innerHTML = `
         <div style="text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px;">
             <div style="background: #ffffff; padding: 12px; border-radius: 16px; border: 2px solid var(--border-color); display: inline-block;">
-                <img src="data:image/png;base64,${data.qr_code_base64}" style="width: 180px; height: 180px; display: block;" alt="QR Code PIX">
+                <img src="data:image/png;base64,${/^[A-Za-z0-9+/=]+$/.test(data.qr_code_base64 || '') ? data.qr_code_base64 : ''}" style="width: 180px; height: 180px; display: block;" alt="QR Code PIX">
             </div>
 
             <div style="font-size: 0.8rem; color: var(--text-secondary); max-width: 280px;">
@@ -7484,7 +7602,7 @@ function renderPixPaymentScreen(data) {
             </div>
 
             <div style="display: flex; gap: 8px; width: 100%;">
-                <input type="text" readonly value="${data.qr_code}" id="pix-copy-input" style="flex: 1; min-width: 0; background: var(--bg-tertiary); border: 2px solid var(--border-color); border-radius: 12px; padding: 10px; color: var(--text-muted); font-size: 0.8rem; outline: none;">
+                <input type="text" readonly value="${escapeHtml(data.qr_code || '')}" id="pix-copy-input" style="flex: 1; min-width: 0; background: var(--bg-tertiary); border: 2px solid var(--border-color); border-radius: 12px; padding: 10px; color: var(--text-muted); font-size: 0.8rem; outline: none;">
                 <button onclick="app.copyPix()" class="btn-primary" style="padding: 10px 14px; border-radius: 12px; font-weight: 700; font-size: 0.8rem; white-space: nowrap;">COPIAR</button>
             </div>
 
@@ -7531,7 +7649,7 @@ function startRechargePolling(paymentId) {
 }
 
 function logout() {
-    localStorage.removeItem('keepai_token');
+    sessionStorage.removeItem('keepai_token');
     state.token = null;
     state.user = null;
     state.credits = 0;
@@ -7807,7 +7925,7 @@ function createSignatureOverlay(dataUrl) {
             </div>
         </div>
         <div class="signature-img-wrapper">
-            <img src="${dataUrl}" alt="Assinatura" />
+            <img src="${escapeHtml(dataUrl)}" alt="Assinatura" />
         </div>
         <div class="sig-resize-handle"></div>
     `;
@@ -8253,7 +8371,7 @@ function printActiveDocThermal() {
         </head>
         <body>
             <div class="receipt-header">DOCSCAN PRO — IMPRESSÃO TÉRMICA</div>
-            <img src="${imgEl.src || imgEl.toDataURL?.()}">
+            <img src="${escapeHtml(imgEl.src || imgEl.toDataURL?.() || '')}">
             <div class="receipt-footer">${new Date().toLocaleString('pt-BR')} — Bematech MP-4200 TH</div>
         </body>
         </html>
@@ -8301,7 +8419,7 @@ function printOcrTextThermal() {
         </head>
         <body>
             <div class="header">COMPROVANTE / TEXTO OCR</div>
-            <div class="content">${ocrText.replace(/</g, '&lt;')}</div>
+            <div class="content">${escapeHtml(ocrText)}</div>
             <div class="footer">${new Date().toLocaleString('pt-BR')}<br>DocScan Pro 2026</div>
         </body>
         </html>
@@ -8321,26 +8439,47 @@ function printOcrTextThermal() {
 async function handleBatchCapture(e) {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
+    if (files.length > 30 || files.some(file => file.size > 15 * 1024 * 1024) ||
+        files.reduce((sum, file) => sum + file.size, 0) > 80 * 1024 * 1024) {
+        showToast('Lote grande demais: até 30 imagens, 15 MB por arquivo e 80 MB no total.', 'warning');
+        e.target.value = '';
+        return;
+    }
 
     playShutterSound();
     triggerHaptic('medium');
     showLoading(`Processando ${files.length} páginas...`);
     closeModal('captureModal');
 
-    for (const file of files) {
-        const dataUrl = await readFileAsDataURL(file);
-        state.multiPageImages.push(dataUrl);
+    try {
+        for (const file of files) {
+            const dataUrl = await readFileAsDataURL(file);
+            state.multiPageImages.push(dataUrl);
+        }
+        showToast(`${files.length} páginas adicionadas!`, 'success');
+        updatePagesGrid();
+        openModal('multiPageModal');
+    } catch (error) {
+        showToast('Falha ao ler o lote: ' + error.message, 'error');
+    } finally {
+        hideLoading();
+        e.target.value = '';
     }
-
-    hideLoading();
-    showToast(`${files.length} páginas adicionadas!`, 'success');
-    updatePagesGrid();
-    openModal('multiPageModal');
 }
 
 // ============================================
 // PDF Import (Multi-page PDF to Scanned Pages)
 // ============================================
+let pdfImportJob = null;
+
+function cancelPdfImport() {
+    if (!pdfImportJob) return;
+    pdfImportJob.cancelled = true;
+    pdfImportJob.renderTask?.cancel();
+    pdfImportJob.loadingTask?.destroy();
+    $('loadingText').textContent = 'Cancelando importação...';
+}
+
 function triggerPdfUpload() {
     closeModal('captureModal');
     const input = $('pdfFileInput');
@@ -8351,16 +8490,29 @@ async function handlePdfImport(event) {
     const file = event.target.files && event.target.files[0];
     if (!file) return;
 
+    const maxFileBytes = 20 * 1024 * 1024;
+    const maxPages = 20;
+    if (file.size > maxFileBytes) {
+        showToast('PDF muito grande. Limite: 20 MB.', 'warning');
+        event.target.value = '';
+        return;
+    }
+
     if (typeof pdfjsLib === 'undefined') {
         showToast('Biblioteca PDF.js não carregada.', 'error');
         return;
     }
 
+    const job = { cancelled: false, loadingTask: null, renderTask: null };
+    pdfImportJob = job;
     showLoading('Carregando arquivo PDF...');
+    $('cancelPdfImportBtn')?.classList.remove('hidden');
 
     try {
         const arrayBuffer = await file.arrayBuffer();
+        if (job.cancelled) return;
         const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+        job.loadingTask = loadingTask;
         const pdf = await loadingTask.promise;
         const numPages = pdf.numPages;
 
@@ -8369,26 +8521,40 @@ async function handlePdfImport(event) {
             showToast('O arquivo PDF não contém páginas.', 'warning');
             return;
         }
+        if (numPages > maxPages) {
+            throw new Error(`Este PDF tem ${numPages} páginas. Importe arquivos com até ${maxPages} páginas por vez.`);
+        }
 
         const pageImages = [];
 
         for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+            if (job.cancelled) break;
             showLoading(`Renderizando página ${pageNum} de ${numPages} em alta resolução...`);
             const page = await pdf.getPage(pageNum);
-            const viewport = page.getViewport({ scale: 2.0 });
+            const natural = page.getViewport({ scale: 1 });
+            const maxPixels = 2_500_000;
+            const scale = Math.min(2, 1800 / Math.max(natural.width, natural.height),
+                Math.sqrt(maxPixels / (natural.width * natural.height)));
+            const viewport = page.getViewport({ scale });
             const canvas = document.createElement('canvas');
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
+            canvas.width = Math.ceil(viewport.width);
+            canvas.height = Math.ceil(viewport.height);
             const ctx = canvas.getContext('2d');
-
-            await page.render({
+            job.renderTask = page.render({
                 canvasContext: ctx,
                 viewport: viewport
-            }).promise;
-
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
-            pageImages.push(dataUrl);
+            });
+            try {
+                await job.renderTask.promise;
+                if (!job.cancelled) pageImages.push(canvas.toDataURL('image/jpeg', 0.82));
+            } finally {
+                job.renderTask = null;
+                canvas.width = canvas.height = 0;
+                page.cleanup();
+            }
         }
+
+        if (job.cancelled) return;
 
         hideLoading();
 
@@ -8408,10 +8574,16 @@ async function handlePdfImport(event) {
             showToast(`${pageImages.length} páginas importadas do PDF com sucesso! 📄`, 'success');
         }
     } catch (err) {
-        hideLoading();
-        console.error('PDF Import error:', err);
-        showToast('Erro ao importar PDF: ' + err.message, 'error');
+        if (!job.cancelled) {
+            console.error('PDF Import error:', err);
+            showToast('Erro ao importar PDF: ' + err.message, 'error');
+        }
     } finally {
+        if (job.cancelled) showToast('Importação de PDF cancelada.', 'info');
+        await job.loadingTask?.destroy().catch(() => {});
+        if (pdfImportJob === job) pdfImportJob = null;
+        $('cancelPdfImportBtn')?.classList.add('hidden');
+        hideLoading();
         event.target.value = '';
     }
 }
@@ -8436,6 +8608,26 @@ function checkTorchCapability() {
         torchBtn.style.display = 'none';
         isTorchOn = false;
         torchBtn.classList.remove('active');
+    }
+}
+
+async function optimizeCameraTrack() {
+    const track = liveCameraStream?.getVideoTracks()[0];
+    if (!track) return;
+    track.addEventListener('ended', () => {
+        if (liveCameraStream?.getVideoTracks()[0] === track) {
+            stopLiveCamera();
+            showToast('A câmera foi desconectada. Abra-a novamente para continuar.', 'warning');
+        }
+    }, { once: true });
+    const capabilities = track.getCapabilities?.() || {};
+    const advanced = {};
+    if (capabilities.focusMode?.includes('continuous')) advanced.focusMode = 'continuous';
+    if (capabilities.exposureMode?.includes('continuous')) advanced.exposureMode = 'continuous';
+    if (capabilities.whiteBalanceMode?.includes('continuous')) advanced.whiteBalanceMode = 'continuous';
+    if (Object.keys(advanced).length) {
+        try { await track.applyConstraints({ advanced: [advanced] }); }
+        catch (error) { console.info('Controles avançados indisponíveis:', error.name); }
     }
 }
 
@@ -8518,11 +8710,8 @@ async function initLiveVideoStream() {
     const constraints = {
         video: {
             facingMode: currentCameraFacing,
-            width: { min: 1920, ideal: 3840, max: 7680 },
-            height: { min: 1080, ideal: 2160, max: 4320 },
-            focusMode: 'continuous',
-            exposureMode: 'continuous',
-            whiteBalanceMode: 'continuous'
+            width: { ideal: 3840 },
+            height: { ideal: 2160 }
         },
         audio: false
     };
@@ -8531,6 +8720,7 @@ async function initLiveVideoStream() {
         liveCameraStream = await navigator.mediaDevices.getUserMedia(constraints);
         video.srcObject = liveCameraStream;
         await video.play();
+        await optimizeCameraTrack();
         checkTorchCapability();
         startRealtimeEdgeTracking();
     } catch (err) {
@@ -8546,6 +8736,7 @@ async function initLiveVideoStream() {
             });
             video.srcObject = liveCameraStream;
             await video.play();
+            await optimizeCameraTrack();
             checkTorchCapability();
             startRealtimeEdgeTracking();
         } catch (fallbackErr) {

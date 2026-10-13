@@ -12,7 +12,7 @@ if (!str_ends_with($path, "/") && !pathinfo($path, PATHINFO_EXTENSION)) {
     header("Location: $target", true, 301);
     exit;
 }
-$v = 'scanner-20261013-1';
+$v = 'scanner-20261013-2';
 $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
 ?>
 <!DOCTYPE html>
@@ -110,12 +110,18 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
                         d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
                 </svg>
                 <input type="text" id="searchInput" placeholder="Buscar documentos..." />
-                <button id="closeSearchBtn" class="icon-btn-small">
+                <button id="closeSearchBtn" class="icon-btn-small" type="button" aria-label="Fechar busca">
                     <svg viewBox="0 0 24 24">
                         <path
                             d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
                     </svg>
                 </button>
+            </div>
+            <div class="search-filters" role="group" aria-label="Filtros de documentos">
+                <select id="searchFolderFilter" aria-label="Filtrar por pasta"><option value="all">Todas as pastas</option></select>
+                <select id="searchTypeFilter" aria-label="Filtrar por tipo"><option value="all">Todos os tipos</option><option value="pdf">PDF</option><option value="image">Imagem</option></select>
+                <label>De <input id="searchDateFrom" type="date" aria-label="Data inicial"></label>
+                <label>Até <input id="searchDateTo" type="date" aria-label="Data final"></label>
             </div>
         </div>
 
@@ -1488,7 +1494,8 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
     <!-- Loading -->
     <div id="loading" class="loading hidden">
         <div class="loading-spinner"></div>
-        <span id="loadingText">Processando...</span>
+        <span id="loadingText" role="status" aria-live="polite">Processando...</span>
+        <button id="cancelPdfImportBtn" class="loading-cancel hidden" type="button" onclick="cancelPdfImport()">Cancelar importação</button>
         <div id="loadingProgress" class="loading-progress hidden">
             <div class="progress-bar">
                 <div id="progressFill" class="progress-fill"></div>
@@ -1735,25 +1742,25 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
 
     <div id="modalOverlay" class="modal" style="z-index: 400;"></div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="vendor/jspdf.umd.min.js"></script>
     <!-- Google Identity Services (OAuth 2.0 / Google Drive) -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Tesseract.js para OCR real -->
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <script src="vendor/tesseract.min.js"></script>
     <!-- Html5-QRCode para leitura de QR Code -->
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="vendor/html5-qrcode.min.js"></script>
+    <script src="vendor/sweetalert2.all.min.js"></script>
     <!-- OpenCV.js para detecção profissional de bordas e contornos (CamScanner-grade) -->
-    <script src="https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.9.0-release.2/dist/opencv.js" async></script>
+    <script src="vendor/opencv.js" async></script>
     <!-- PDF.js para importar e visualizar PDFs existentes -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="vendor/pdf.min.js"></script>
     <script>
         if (typeof pdfjsLib !== 'undefined') {
-            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'vendor/pdf.worker.min.js';
         }
     </script>
     <!-- SheetJS (xlsx) para exportação de tabelas e OCR para Excel -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="vendor/xlsx.full.min.js"></script>
     <script src="scanner-core.js?v=<?php echo $v; ?>"></script>
     <script src="script.js?v=<?php echo $v; ?>"></script>
     <script src="scanner-reliability.js?v=<?php echo $v; ?>"></script>

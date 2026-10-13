@@ -26,7 +26,7 @@ O **DocScan Pro** é uma solução completa de digitalização e processamento d
 * ✍️ **Assinatura Touch & Carimbos:** Assinador digital integrado na tela com ajuste de espessura/cor, carimbos personalizáveis e tarjas de segurança.
 * 🖨️ **Impressão Térmica 80mm & PDF:** Geração de bobinas para impressoras térmicas (Bematech MP-4200 TH / ESC-POS) e pranchas multipáginas em PDF.
 * ☁️ **Google Drive & Pagamentos:** Sincronização direta com Google Drive e compra de créditos IA via PIX e PayPal.
-* 📱 **PWA & Acesso Offline:** Documentos salvos localmente permanecem disponíveis; bibliotecas externas e recursos de IA/Drive exigem conexão. O envio a serviços externos ocorre quando esses recursos são usados.
+* 📱 **PWA & Acesso Offline:** Após a primeira instalação completa (aprox. 60 MB de bibliotecas locais), câmera, edição, PDF e OCR local funcionam sem rede; Google Drive, login e OCR com IA exigem conexão. Documentos ficam no IndexedDB do aparelho; faça backup para evitar perdas ao limpar os dados do navegador.
 
 ---
 
@@ -43,3 +43,7 @@ O **DocScan Pro** é uma solução completa de digitalização e processamento d
 
 © 2026 **4U.IA.BR**. Todos os direitos reservados.  
 Este repositório é publicado para fins de vitrine, transparência e portfólio.
+
+## Backup, busca e limites
+
+O backup JSON v3 inclui os arquivos reais e pastas criptografadas, com verificação SHA-256. Guarde as senhas das pastas separadamente. A importação valida o conteúdo e restaura registros em uma transação. A busca cobre nome, etiquetas e texto OCR já extraído, com filtros por pasta, formato e datas. PDFs importados têm limite de 20 MB e 20 páginas; o processamento é progressivo e pode ser cancelado. Capturas em lote aceitam até 30 imagens (15 MB cada, 80 MB no total).
