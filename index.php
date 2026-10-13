@@ -12,7 +12,7 @@ if (!str_ends_with($path, "/") && !pathinfo($path, PATHINFO_EXTENSION)) {
     header("Location: $target", true, 301);
     exit;
 }
-$v = 'scanner-20261013-5';
+$v = 'scanner-20261013-6';
 $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
 ?>
 <!DOCTYPE html>

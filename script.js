@@ -1304,183 +1304,98 @@ function _hysteresis(nms, w, h) {
     return edges;
 }
 
-/**
- * Advanced Document Quadrilateral Detection (CamScanner-grade)
- * Detects the 4 corners { tl, tr, br, bl } of a document in the image using edge gradient transitions.
- */
-function _findDocumentCorners(pixelData, w, h) {
-    const lum = new Uint8Array(w * h);
-    for (let i = 0, p = 0; i < pixelData.length; i += 4, p++) {
-        lum[p] = Math.round(0.299 * pixelData[i] + 0.587 * pixelData[i + 1] + 0.114 * pixelData[i + 2]);
-    }
-
-    const edgePoints = [];
-    const stepY = 2;
-    const stepX = 2;
-
-    // Scan horizontal lines for left & right borders
-    for (let y = 8; y < h - 8; y += stepY) {
-        let firstEdge = -1;
-        let lastEdge = -1;
-        for (let x = 6; x < w - 6; x++) {
-            const diff = Math.abs(lum[y * w + x] - lum[y * w + (x - 4)]);
-            if (diff > 25) {
-                if (firstEdge === -1) firstEdge = x;
-                lastEdge = x;
-            }
-        }
-        if (firstEdge !== -1 && lastEdge !== -1 && (lastEdge - firstEdge) > w * 0.15) {
-            edgePoints.push({ x: firstEdge, y });
-            edgePoints.push({ x: lastEdge, y });
-        }
-    }
-
-    // Scan vertical lines for top & bottom borders
-    for (let x = 8; x < w - 8; x += stepX) {
-        let firstEdge = -1;
-        let lastEdge = -1;
-        for (let y = 6; y < h - 6; y++) {
-            const diff = Math.abs(lum[y * w + x] - lum[(y - 4) * w + x]);
-            if (diff > 25) {
-                if (firstEdge === -1) firstEdge = y;
-                lastEdge = y;
-            }
-        }
-        if (firstEdge !== -1 && lastEdge !== -1 && (lastEdge - firstEdge) > h * 0.15) {
-            edgePoints.push({ x, y: firstEdge });
-            edgePoints.push({ x, y: lastEdge });
-        }
-    }
-
-    if (edgePoints.length < 12) {
-        return null;
-    }
-
-    let tl = edgePoints[0], tr = edgePoints[0], br = edgePoints[0], bl = edgePoints[0];
-    let minSum = Infinity, maxSum = -Infinity;
-    let minDiff = Infinity, maxDiff = -Infinity;
-
-    for (let i = 0; i < edgePoints.length; i++) {
-        const p = edgePoints[i];
-        const sum = p.x + p.y;
-        const diff = p.x - p.y;
-
-        if (sum < minSum) { minSum = sum; tl = p; }
-        if (sum > maxSum) { maxSum = sum; br = p; }
-        if (diff > maxDiff) { maxDiff = diff; tr = p; }
-        if (diff < minDiff) { minDiff = diff; bl = p; }
-    }
-
-    const docW = Math.max(tr.x - tl.x, br.x - bl.x);
-    const docH = Math.max(bl.y - tl.y, br.y - tr.y);
-
-    if (docW < w * 0.12 || docH < h * 0.12) {
-        return null;
-    }
-
-    const toPctX = (px) => Math.max(1, Math.min(99, (px / w) * 100));
-    const toPctY = (py) => Math.max(1, Math.min(99, (py / h) * 100));
-
-    return {
-        tl: { x: toPctX(tl.x), y: toPctY(tl.y) },
-        tr: { x: toPctX(tr.x), y: toPctY(tr.y) },
-        br: { x: toPctX(br.x), y: toPctY(br.y) },
-        bl: { x: toPctX(bl.x), y: toPctY(bl.y) }
-    };
-}
-
-/**
- * OpenCV.js Canny + approxPolyDP Document 4-Corner Detection (GitHub / CamScanner standard)
- */
+/** Find a paper-like quadrilateral without promoting the outer scene to a document. */
 function findDocumentWithOpenCV(canvasOrImg) {
-    if (typeof cv === 'undefined' || !cv.Mat) {
-        return null;
-    }
-
+    if (typeof cv === 'undefined' || !cv.Mat) return null;
+    const mats = [];
+    const keep = mat => { mats.push(mat); return mat; };
     try {
-        const src = cv.imread(canvasOrImg);
-        const gray = new cv.Mat();
+        const src = keep(cv.imread(canvasOrImg));
+        const gray = keep(new cv.Mat());
         cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
-
-        const blurred = new cv.Mat();
+        const blurred = keep(new cv.Mat());
         cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0);
+        const w = src.cols, h = src.rows, frameArea = w * h;
+        const kernel = keep(cv.Mat.ones(9, 9, cv.CV_8U));
+        const outerKernel = keep(cv.Mat.ones(17, 17, cv.CV_8U));
+        const binary = keep(new cv.Mat());
+        const otsu = cv.threshold(blurred, binary, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU);
+        const softBinary = keep(new cv.Mat());
+        cv.threshold(blurred, softBinary, Math.max(65, otsu * 0.82), 255, cv.THRESH_BINARY);
+        const edges = keep(new cv.Mat());
+        cv.Canny(blurred, edges, 45, 140);
+        const sources = [binary, softBinary, edges];
+        let best = null;
 
-        const edges = new cv.Mat();
-        cv.Canny(blurred, edges, 40, 160);
+        for (const source of sources) {
+            const joined = keep(new cv.Mat());
+            if (source === edges) cv.dilate(source, joined, keep(cv.Mat.ones(3, 3, cv.CV_8U)));
+            else cv.morphologyEx(source, joined, cv.MORPH_CLOSE, kernel);
+            const contours = keep(new cv.MatVector());
+            const hierarchy = keep(new cv.Mat());
+            cv.findContours(joined, contours, hierarchy, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE);
 
-        const kernel = cv.Mat.ones(3, 3, cv.CV_8U);
-        const dilated = new cv.Mat();
-        cv.dilate(edges, dilated, kernel);
-
-        let contours = new cv.MatVector();
-        let hierarchy = new cv.Mat();
-        cv.findContours(dilated, contours, hierarchy, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE);
-
-        let maxArea = 0;
-        let bestPoints = null;
-        const minArea = src.cols * src.rows * 0.04;
-        const maxAllowedArea = src.cols * src.rows * 0.98;
-
-        for (let i = 0; i < contours.size(); ++i) {
-            let contour = contours.get(i);
-            let area = cv.contourArea(contour);
-            if (area > minArea && area < maxAllowedArea) {
-                let peri = cv.arcLength(contour, true);
-                let approx = new cv.Mat();
-                cv.approxPolyDP(contour, approx, 0.025 * peri, true);
-
-                if (approx.rows === 4 && area > maxArea) {
-                    if (cv.isContourConvex(approx)) {
-                        maxArea = area;
-                        bestPoints = [];
-                        for (let k = 0; k < 4; k++) {
-                            bestPoints.push({
-                                x: approx.data32S[k * 2],
-                                y: approx.data32S[k * 2 + 1]
-                            });
+            for (let i = 0; i < contours.size(); i++) {
+                const contour = contours.get(i);
+                try {
+                    const area = cv.contourArea(contour);
+                    const fraction = area / frameArea;
+                    if (fraction < 0.07 || fraction > 0.82) continue;
+                    const hull = new cv.Mat();
+                    const approx = new cv.Mat();
+                    try {
+                        cv.convexHull(contour, hull);
+                        const perimeter = cv.arcLength(hull, true);
+                        let found = false;
+                        for (const epsilon of [0.018, 0.025, 0.035, 0.05]) {
+                            cv.approxPolyDP(hull, approx, epsilon * perimeter, true);
+                            if (approx.rows === 4 && cv.isContourConvex(approx)) { found = true; break; }
                         }
-                    }
-                }
-                approx.delete();
+                        if (!found) continue;
+                        const pts = Array.from({length: 4}, (_, k) => ({x: approx.data32S[k * 2], y: approx.data32S[k * 2 + 1]}));
+                        // A cut-off sheet cannot be safely auto-captured or perspective-corrected.
+                        if (pts.some(p => p.x < w * 0.015 || p.x > w * 0.985 || p.y < h * 0.015 || p.y > h * 0.985)) continue;
+                        const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+                        const boxW = Math.max(...xs) - Math.min(...xs), boxH = Math.max(...ys) - Math.min(...ys);
+                        if (boxW < w * 0.18 || boxH < h * 0.18 || (boxW > w * 0.95 && boxH > h * 0.95)) continue;
+                        const lengths = pts.map((p, k) => Math.hypot(p.x - pts[(k + 1) % 4].x, p.y - pts[(k + 1) % 4].y));
+                        if (Math.min(...lengths) < Math.min(w, h) * 0.12 || Math.max(...lengths) / Math.min(...lengths) > 4) continue;
+
+                        const mask = new cv.Mat(), inner = new cv.Mat(), outer = new cv.Mat(), ring = new cv.Mat();
+                        try {
+                            mask.create(h, w, cv.CV_8UC1);
+                            mask.setTo(new cv.Scalar(0));
+                            cv.fillConvexPoly(mask, approx, new cv.Scalar(255));
+                            cv.erode(mask, inner, kernel);
+                            cv.dilate(mask, outer, outerKernel);
+                            cv.subtract(outer, mask, ring);
+                            const inside = cv.mean(gray, inner)[0];
+                            const outside = cv.mean(gray, ring)[0];
+                            const contrast = inside - outside;
+                            // A paper sheet should be lighter than its surroundings.
+                            if (inside < 90 || contrast < 16) continue;
+                            const score = contrast + 28 * Math.sqrt(fraction) - 12 * Math.abs(fraction - 0.4);
+                            if (!best || score > best.score) best = {pts, score};
+                        } finally {
+                            mask.delete(); inner.delete(); outer.delete(); ring.delete();
+                        }
+                    } finally { hull.delete(); approx.delete(); }
+                } finally { contour.delete(); }
             }
         }
-
-        // Cleanup
-        src.delete();
-        gray.delete();
-        blurred.delete();
-        edges.delete();
-        kernel.delete();
-        dilated.delete();
-        contours.delete();
-        hierarchy.delete();
-
-        if (bestPoints && bestPoints.length === 4) {
-            let tl = bestPoints[0], tr = bestPoints[0], br = bestPoints[0], bl = bestPoints[0];
-            let minSum = Infinity, maxSum = -Infinity;
-            let minDiff = Infinity, maxDiff = -Infinity;
-
-            for (let p of bestPoints) {
-                let sum = p.x + p.y;
-                let diff = p.x - p.y;
-                if (sum < minSum) { minSum = sum; tl = p; }
-                if (sum > maxSum) { maxSum = sum; br = p; }
-                if (diff > maxDiff) { maxDiff = diff; tr = p; }
-                if (diff < minDiff) { minDiff = diff; bl = p; }
-            }
-
-            const w = canvasOrImg.width;
-            const h = canvasOrImg.height;
-
-            return {
-                tl: { x: Math.max(1, Math.min(99, (tl.x / w) * 100)), y: Math.max(1, Math.min(99, (tl.y / h) * 100)) },
-                tr: { x: Math.max(1, Math.min(99, (tr.x / w) * 100)), y: Math.max(1, Math.min(99, (tr.y / h) * 100)) },
-                br: { x: Math.max(1, Math.min(99, (br.x / w) * 100)), y: Math.max(1, Math.min(99, (br.y / h) * 100)) },
-                bl: { x: Math.max(1, Math.min(99, (bl.x / w) * 100)), y: Math.max(1, Math.min(99, (bl.y / h) * 100)) }
-            };
-        }
+        if (!best) return null;
+        const pts = best.pts;
+        const tl = pts.reduce((a, p) => p.x + p.y < a.x + a.y ? p : a);
+        const br = pts.reduce((a, p) => p.x + p.y > a.x + a.y ? p : a);
+        const tr = pts.reduce((a, p) => p.x - p.y > a.x - a.y ? p : a);
+        const bl = pts.reduce((a, p) => p.x - p.y < a.x - a.y ? p : a);
+        if (new Set([tl, tr, br, bl]).size !== 4) return null;
+        const pct = p => ({x: Math.max(0, Math.min(100, p.x * 100 / w)), y: Math.max(0, Math.min(100, p.y * 100 / h))});
+        return {tl: pct(tl), tr: pct(tr), br: pct(br), bl: pct(bl)};
     } catch (err) {
-        console.warn('OpenCV document detection fallback:', err);
+        console.warn('OpenCV document detection failed:', err);
+    } finally {
+        for (const mat of mats.reverse()) mat.delete();
     }
     return null;
 }
@@ -1506,12 +1421,6 @@ function autoDetectEdges(autoOnly = false) {
 
         // 1. Try OpenCV detection first (GitHub / CamScanner standard)
         let corners = findDocumentWithOpenCV(offscreen);
-
-        // 2. Fallback to Scanline Gradient Detector
-        if (!corners) {
-            const imgData = octx.getImageData(0, 0, sw, sh);
-            corners = _findDocumentCorners(imgData.data, sw, sh);
-        }
 
         if (!autoOnly) hideLoading();
 
@@ -4420,7 +4329,8 @@ let isAutoCaptureEnabled = true;
 let autoCaptureStabilityCounter = 0;
 let lastAutoCaptureTime = 0;
 let prevCorners = null;
-const AUTO_CAPTURE_STABLE_FRAMES = 12; // ~500-600ms de estabilidade do documento
+let autoCaptureBusy = false;
+const AUTO_CAPTURE_STABLE_FRAMES = 10; // ~1 segundo de estabilidade do documento
 const AUTO_CAPTURE_MAX_DIFF = 1.3;     // tolerância de movimento em %
 const AUTO_CAPTURE_COOLDOWN_MS = 2200; // intervalo mínimo entre fotos automáticas
 
@@ -4446,6 +4356,7 @@ function startRealtimeEdgeTracking() {
     smoothedLiveQuad = null;
     autoCaptureStabilityCounter = 0;
     prevCorners = null;
+    autoCaptureBusy = false;
 
     function track(timestamp) {
         if (!liveCameraStream || video.paused || video.ended || !video.videoWidth) {
@@ -4453,22 +4364,24 @@ function startRealtimeEdgeTracking() {
             return;
         }
 
-        if (timestamp - lastTrackTime > 45) {
+        if (timestamp - lastTrackTime > 100) {
             lastTrackTime = timestamp;
             try {
+                const frameWidth = 320;
+                const frameHeight = Math.max(180, Math.round(video.videoHeight * frameWidth / video.videoWidth));
+                if (edgeTrackingCanvas.height !== frameHeight) edgeTrackingCanvas.height = frameHeight;
                 const ctx = edgeTrackingCanvas.getContext('2d', { willReadFrequently: true });
-                ctx.drawImage(video, 0, 0, 320, 240);
+                ctx.drawImage(video, 0, 0, frameWidth, frameHeight);
 
-                // 1. Run OpenCV detection on live camera frame
-                let corners = findDocumentWithOpenCV(edgeTrackingCanvas);
-
-                // 2. Fallback to scanline gradient detector
-                if (!corners) {
-                    const imgData = ctx.getImageData(0, 0, 320, 240);
-                    corners = _findDocumentCorners(imgData.data, 320, 240);
-                }
+                // Never auto-capture from the outermost image gradients (keyboard, table, etc.).
+                const corners = findDocumentWithOpenCV(edgeTrackingCanvas);
 
                 if (corners) {
+                    if (prevCorners && Math.max(...['tl', 'tr', 'br', 'bl'].map(k =>
+                        Math.hypot(corners[k].x - prevCorners[k].x, corners[k].y - prevCorners[k].y))) > 8) {
+                        smoothedLiveQuad = null;
+                        autoCaptureStabilityCounter = 0;
+                    }
                     // Exponential moving average for silky-smooth tracking
                     if (!smoothedLiveQuad) {
                         smoothedLiveQuad = {
@@ -4540,7 +4453,7 @@ function startRealtimeEdgeTracking() {
                     }
 
                     // Smart Auto-Capture Stability Detection
-                    if (isAutoCaptureEnabled) {
+                    if (isAutoCaptureEnabled && !autoCaptureBusy) {
                         const now = Date.now();
                         if (now - lastAutoCaptureTime > AUTO_CAPTURE_COOLDOWN_MS) {
                             if (prevCorners) {
@@ -4555,9 +4468,15 @@ function startRealtimeEdgeTracking() {
 
                                 let frameLegible = true;
                                 if (autoCaptureStabilityCounter >= 6) {
+                                    const pts = [corners.tl, corners.tr, corners.br, corners.bl];
+                                    const left = Math.max(0, Math.floor(Math.min(...pts.map(p => p.x)) * frameWidth / 100));
+                                    const top = Math.max(0, Math.floor(Math.min(...pts.map(p => p.y)) * frameHeight / 100));
+                                    const right = Math.min(frameWidth, Math.ceil(Math.max(...pts.map(p => p.x)) * frameWidth / 100));
+                                    const bottom = Math.min(frameHeight, Math.ceil(Math.max(...pts.map(p => p.y)) * frameHeight / 100));
+                                    const regionWidth = Math.max(1, right - left), regionHeight = Math.max(1, bottom - top);
                                     const quality = ScannerCore.quality(
-                                        ctx.getImageData(0, 0, 320, 240).data, 320, 240);
-                                    frameLegible = quality.mean >= 55 && quality.mean <= 225 &&
+                                        ctx.getImageData(left, top, regionWidth, regionHeight).data, regionWidth, regionHeight);
+                                    frameLegible = quality.mean >= 65 && quality.mean <= 235 &&
                                         quality.sharpness >= 35 && quality.bright < 0.45;
                                     if (!frameLegible && hintText) hintText.textContent =
                                         quality.mean < 55 ? '💡 Mais luz para capturar' : '📷 Ajuste o foco e evite reflexos';
@@ -4576,7 +4495,10 @@ function startRealtimeEdgeTracking() {
                                         if (hintText) {
                                             hintText.textContent = '📸 Capturando!';
                                         }
-                                        captureLivePhoto();
+                                        autoCaptureBusy = true;
+                                        Promise.resolve(captureLivePhoto()).catch(error => {
+                                            console.warn('Automatic capture failed:', error);
+                                        }).finally(() => { autoCaptureBusy = false; });
                                     }
                                 } else {
                                     autoCaptureStabilityCounter = Math.max(0, autoCaptureStabilityCounter - 1);
