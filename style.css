@@ -1289,6 +1289,13 @@ body {
     -webkit-overflow-scrolling: touch;
 }
 
+.crop-review-hint {
+    margin: 0 0 10px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 1.4;
+}
+
 .tool-group {
     margin-bottom: 12px;
 }
