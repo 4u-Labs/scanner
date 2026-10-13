@@ -1,5 +1,5 @@
 {
-    "id": "docscan-pro-pwa",
+    "id": "/docscan-pro-pwa",
     "name": "DocScan Pro",
     "short_name": "DocScan",
     "description": "Scanner de documentos profissional - Digitalize, edite e organize seus documentos",
@@ -59,7 +59,13 @@
             ]
         }
     ],
-    "related_applications": [],
+    "related_applications": [
+        {
+            "platform": "webapp",
+            "url": "https://4u.ia.br/app/scanner/manifest.json",
+            "id": "https://4u.ia.br/docscan-pro-pwa"
+        }
+    ],
     "prefer_related_applications": false,
     "share_target": {
         "action": "./",

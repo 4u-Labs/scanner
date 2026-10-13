@@ -44,6 +44,7 @@ const state = {
     currentPin: '', // For PIN entry
     tempPin: ''      // For setting/validating PIN
 };
+let installedPwaDetected = false;
 
 // Google Drive Config (OAuth 2.0 / Google Identity Services)
 const GOOGLE_CLIENT_ID = '569266864432-pd09jbb5no9ekdhdr018fj643nopp817.apps.googleusercontent.com';
@@ -364,25 +365,21 @@ function setupEventListeners() {
     // Payment Events (Unified Recharge Modal)
     $('menuBuyCredits').onclick = () => { openRechargeModal(); toggleSideMenu(false); };
 
-    // PWA Install
-    window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
-        state.deferredPrompt = e;
-        window.deferredPrompt = e;
-    });
+    // The listener in <head> stores the event even if it fires before app initialization.
+    window.addEventListener('docscan-install-ready', updateInstallButtons);
+    updateInstallButtons();
+    checkInstalledPwa();
 
     $('menuInstall').onclick = () => {
-        triggerPwaInstall();
         toggleSideMenu(false);
+        triggerPwaInstall();
     };
 
     window.addEventListener('appinstalled', () => {
         state.deferredPrompt = null;
         window.deferredPrompt = null;
         document.documentElement.classList.add('is-standalone');
-        $('menuInstall')?.classList.add('hidden');
-        $('installDivider')?.classList.add('hidden');
-        $('mainInstallBtn')?.classList.add('hidden');
+        updateInstallButtons();
         console.log('App installed');
     });
 
@@ -402,6 +399,45 @@ function setupEventListeners() {
 // ============================================
 // PWA Installation & Guide
 // ============================================
+function isPwaStandalone() {
+    return window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true || document.documentElement.classList.contains('is-standalone');
+}
+
+function supportsNativeInstallPrompt() {
+    return /Chrome\/|Chromium\/|Edg\/|EdgA\/|OPR\/|SamsungBrowser\//.test(navigator.userAgent) && !/iPad|iPhone|iPod/.test(navigator.userAgent);
+}
+
+async function checkInstalledPwa() {
+    if (typeof navigator.getInstalledRelatedApps !== 'function') return;
+    try {
+        installedPwaDetected = (await navigator.getInstalledRelatedApps()).some(app => app.platform === 'webapp');
+        updateInstallButtons();
+    } catch (error) {
+        console.warn('Could not check installed web apps:', error);
+    }
+}
+
+function updateInstallButtons() {
+    const isEn = typeof currentLang !== 'undefined' && currentLang === 'en';
+    const ready = !!window.deferredPrompt;
+    const label = ready ? (isEn ? 'Install App' : 'Instalar App')
+        : installedPwaDetected ? (isEn ? 'Already installed' : 'Já instalado')
+        : supportsNativeInstallPrompt() ? (isEn ? 'Preparing install…' : 'Preparando instalação…')
+        : (isEn ? 'How to install' : 'Como instalar');
+    for (const id of ['mainInstallBtn', 'menuInstall']) {
+        const button = $(id);
+        if (!button) continue;
+        const span = button.querySelector('span');
+        if (span) span.textContent = label;
+        button.setAttribute('aria-label', span?.textContent || label);
+    }
+    if (isPwaStandalone()) {
+        $('mainInstallBtn')?.classList.add('hidden');
+        $('menuInstall')?.classList.add('hidden');
+        $('installDivider')?.classList.add('hidden');
+    }
+}
+
 function showInstallGuideModal() {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     const isAndroid = /Android/.test(navigator.userAgent);
@@ -431,24 +467,32 @@ window.showInstallGuideModal = showInstallGuideModal;
 
 async function triggerPwaInstall() {
     if (typeof triggerHaptic === 'function') triggerHaptic('medium');
-    const promptEvent = window.deferredPrompt || (window.state && window.state.deferredPrompt);
+    if (isPwaStandalone()) return;
+    const promptEvent = window.deferredPrompt;
     if (promptEvent) {
+        // prompt() must be called while this click still has user activation.
+        window.deferredPrompt = null;
+        state.deferredPrompt = null;
         try {
-            promptEvent.prompt();
+            await promptEvent.prompt();
             const { outcome } = await promptEvent.userChoice;
             console.log(`User response to the install prompt: ${outcome}`);
             if (outcome === 'accepted') {
-                window.deferredPrompt = null;
-                if (window.state) window.state.deferredPrompt = null;
+                installedPwaDetected = true;
                 document.documentElement.classList.add('is-standalone');
-                $('menuInstall')?.classList.add('hidden');
-                $('installDivider')?.classList.add('hidden');
-                $('mainInstallBtn')?.classList.add('hidden');
+            } else {
+                showToast(currentLang === 'en' ? 'Installation cancelled.' : 'Instalação cancelada.', 'info');
             }
         } catch (e) {
-            console.warn('Install prompt error, showing guide:', e);
-            showInstallGuideModal();
+            console.warn('Native install prompt unavailable:', e);
+            showToast(currentLang === 'en' ? 'The browser could not open the install prompt. Reload and try again.' : 'O navegador não abriu a instalação. Atualize a página e tente novamente.', 'info');
+        } finally {
+            updateInstallButtons();
         }
+    } else if (installedPwaDetected) {
+        showToast(currentLang === 'en' ? 'The browser still detects DocScan Pro as installed. On Android, uninstall it in Settings > Apps, then reopen this page.' : 'O navegador ainda detecta o DocScan Pro instalado. No Android, desinstale em Configurações > Aplicativos e depois reabra esta página.', 'info');
+    } else if (supportsNativeInstallPrompt()) {
+        showToast(currentLang === 'en' ? 'The browser is preparing installation. Stay on this page a little longer and try again.' : 'O navegador está preparando a instalação. Aguarde um pouco nesta página e tente novamente.', 'info');
     } else {
         showInstallGuideModal();
     }
@@ -3895,6 +3939,8 @@ function setLanguage(lang) {
         const key = el.getAttribute('data-i18n-title');
         if (dict[key]) el.setAttribute('title', dict[key]);
     });
+
+    updateInstallButtons();
 
     if (typeof updateUI === 'function') {
         updateUI();
