@@ -4075,6 +4075,25 @@ body.theme-light {
     pointer-events: auto !important;
 }
 
+.viewer-edit-row {
+    flex-shrink: 0;
+    padding: 8px 14px;
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border-color);
+}
+
+.viewer-edit-row button {
+    width: 100%;
+    min-height: 42px;
+    border: 0;
+    border-radius: 10px;
+    background: var(--accent-primary);
+    color: #fff;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
 .viewer-page-bar {
     display: flex !important;
     align-items: center !important;

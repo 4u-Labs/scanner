@@ -12,7 +12,7 @@ if (!str_ends_with($path, "/") && !pathinfo($path, PATHINFO_EXTENSION)) {
     header("Location: $target", true, 301);
     exit;
 }
-$v = 'scanner-20261013-10';
+$v = 'scanner-20261013-11';
 $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
 ?>
 <!DOCTYPE html>
@@ -1109,6 +1109,9 @@ $baseDir = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/\\") . "/";
             <!-- Conteúdo da imagem com zoom e pan -->
             <div class="viewer-content" id="viewerContent">
                 <img id="viewerImage" src="" alt="Documento">
+            </div>
+            <div class="viewer-edit-row">
+                <button id="viewerEditPageBtn" type="button" data-i18n="viewer_edit_page">✏️ Editar esta página</button>
             </div>
             <!-- Barra de Navegação Multi-Páginas -->
             <div id="viewerPageBar" class="viewer-page-bar hidden">

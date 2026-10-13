@@ -356,6 +356,7 @@ function setupEventListeners() {
         updateViewerTransform();
         closeModal('viewerModal');
     };
+    $('viewerEditPageBtn').onclick = editSavedPage;
 
     // Context Menu
     document.addEventListener('click', (e) => {
@@ -904,11 +905,21 @@ function handleImageCapture(event) {
 // Editor
 // ============================================
 let editorSource = 'file';
+let savedEditTarget = null;
+let savingEditedPage = false;
 
 function leaveEditor() {
+    if (savingEditedPage) return;
     const source = editorSource;
     editorSource = 'file';
     closeModal('editorModal');
+    if (source === 'saved') {
+        savedEditTarget = null;
+        state.originalImage = null;
+        state.currentImage = null;
+        openModal('viewerModal');
+        return;
+    }
     if (source.startsWith('camera')) {
         state.originalImage = null;
         state.currentImage = null;
@@ -922,15 +933,16 @@ function openEditor(img, source = 'file') {
         state.originalImage = img;
         state.currentImage = img;
     }
-    $('editorTitle').textContent = source.startsWith('camera') ? 'Revisar recorte' : 'Editor';
+    $('editorTitle').textContent = source === 'saved' ? t('edit_saved_page_title') : source.startsWith('camera') ? 'Revisar recorte' : 'Editor';
     $('closeEditorBtn').setAttribute('aria-label', source.startsWith('camera') ? 'Fotografar novamente' : 'Voltar');
-    $('editorDoneBtn').setAttribute('aria-label', 'Aplicar recorte e continuar');
-    state.currentFilter = 'magic';
-    $$('.filter-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.filter === 'magic'));
+    $('editorDoneBtn').setAttribute('aria-label', source === 'saved' ? t('save_edits') : 'Aplicar recorte e continuar');
+    state.currentFilter = source === 'saved' ? 'original' : 'magic';
+    $$('.filter-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.filter === state.currentFilter));
     openModal('editorModal');
     switchEditorTab('crop');
     drawImageToCanvas();
-    setTimeout(() => autoDetectEdges(true), 120);
+    if (source === 'saved') useFullImage();
+    else setTimeout(() => autoDetectEdges(true), 120);
 }
 
 function switchEditorTab(tab) {
@@ -1891,17 +1903,42 @@ function resetAdjustments() {
 // Finish Editing
 // ============================================
 function finishEditing() {
+    if (editorSource === 'saved' && savingEditedPage) return;
     if (typeof confirmSignaturePlacement === 'function' && $('signatureOverlayBox')) {
         confirmSignaturePlacement();
     }
+    if (editorSource === 'saved') savingEditedPage = true;
     showLoading('Processando...');
 
     setTimeout(async () => {
+        const source = editorSource;
+        if (source === 'saved') {
+            try {
+                const editedImage = getCroppedImage();
+                if (!editedImage) throw new Error('Não foi possível gerar a página editada.');
+                await saveEditedPage(editedImage);
+                editorSource = 'file';
+                savedEditTarget = null;
+                closeModal('editorModal');
+                openModal('viewerModal');
+                updateViewerPageUI();
+                updateUI();
+                showToast(state.viewerDoc.driveId
+                    ? 'Página salva neste dispositivo. Reenvie ao Drive para atualizá-la.'
+                    : 'Página editada e salva neste dispositivo.', 'success');
+            } catch (error) {
+                console.error('Erro ao salvar edição:', error);
+                showToast('Não foi possível salvar a edição: ' + error.message, 'error');
+            } finally {
+                savingEditedPage = false;
+                hideLoading();
+            }
+            return;
+        }
+
         const croppedImage = getCroppedImage();
         hideLoading();
         closeModal('editorModal');
-
-        const source = editorSource;
         editorSource = 'file';
         if (source === 'camera-batch') {
             state.multiPageImages.push(croppedImage);
@@ -3196,6 +3233,82 @@ function updateViewerPageUI() {
     }
 }
 
+function editSavedPage() {
+    const doc = state.viewerDoc;
+    const pageIndex = state.activePageIndex || 0;
+    const page = doc?.pages?.[pageIndex] || doc?.image;
+    if (!doc || !page) {
+        showToast('Esta página não tem uma imagem editável.', 'error');
+        return;
+    }
+
+    showLoading('Abrindo página no editor...');
+    const img = new Image();
+    img.onload = () => {
+        hideLoading();
+        savedEditTarget = { id: doc.id, pageIndex };
+        closeModal('viewerModal');
+        $('viewerModal').classList.add('hidden');
+        openEditor(img, 'saved');
+    };
+    img.onerror = () => {
+        hideLoading();
+        showToast('Não foi possível abrir esta página como imagem.', 'error');
+    };
+    img.src = page;
+}
+
+async function thumbnailForSavedPage(source) {
+    const img = await ScannerCore.loadImage(source);
+    try {
+        const scale = Math.min(1, 200 / Math.max(img.naturalWidth, img.naturalHeight));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+        canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        return canvas.toDataURL('image/jpeg', 0.72);
+    } finally {
+        ScannerCore.releaseImage(img);
+    }
+}
+
+async function saveEditedPage(editedImage) {
+    const target = savedEditTarget;
+    const doc = state.documents.find(item => item.id === target?.id);
+    if (!doc || doc.sealed) throw new Error('Documento indisponível. Abra a pasta novamente.');
+    const pages = [...(doc.pages?.length ? doc.pages : [doc.image])];
+    if (!pages[target.pageIndex]) throw new Error('A página selecionada não existe mais.');
+    pages[target.pageIndex] = editedImage;
+
+    const pdf = doc.format === 'pdf' || doc.mimeType === 'application/pdf' || pages.length > 1;
+    const mimeType = pdf ? 'application/pdf' : 'image/jpeg';
+    const fileBlob = pdf ? await generatePdf(pages) : await ScannerCore.asBlob(editedImage, mimeType);
+    const thumbnail = target.pageIndex === 0 || !doc.thumbnail
+        ? await thumbnailForSavedPage(pages[0]) : doc.thumbnail;
+    const name = pdf ? doc.name.replace(/\.(jpe?g|png)$/i, '.pdf') : doc.name.replace(/\.png$/i, '.jpg');
+    const updated = {
+        ...doc, name, pages, image: pages[0], thumbnail,
+        pageCount: pages.length, format: pdf ? 'pdf' : 'jpg', mimeType, fileBlob,
+        modifiedAt: new Date().toISOString()
+    };
+
+    await saveToStore('documents', updated);
+    Object.assign(doc, updated);
+    state.viewerDoc = doc;
+    state.activePageIndex = target.pageIndex;
+
+    for (const pending of state.pendingUploads.filter(item => item.documentId === doc.id)) {
+        try {
+            const refreshed = { ...pending, data: fileBlob, name, mimeType };
+            await saveToStore('pending', refreshed);
+            Object.assign(pending, refreshed);
+        } catch (error) {
+            console.warn('Não foi possível atualizar o envio pendente:', error);
+            showToast('Edição salva; revise o envio pendente ao Google Drive.', 'warning');
+        }
+    }
+}
+
 function viewerNavigatePage(delta) {
     const doc = state.viewerDoc;
     if (!doc || !doc.pages) return;
@@ -3578,6 +3691,9 @@ const I18N_DICT = {
         move_to_title: "Mover para",
         pin_modal_title: "Digite o PIN",
         viewer_add_page: "+ Página",
+        viewer_edit_page: "✏️ Editar esta página",
+        edit_saved_page_title: "Editar página salva",
+        save_edits: "Salvar alterações",
         ocr_title: "Texto Extraído (OCR)",
         ocr_placeholder: "O texto extraído aparecerá aqui...",
         copy_text: "Copiar Texto",
@@ -3736,6 +3852,9 @@ const I18N_DICT = {
         move_to_title: "Move to",
         pin_modal_title: "Enter PIN",
         viewer_add_page: "+ Page",
+        viewer_edit_page: "✏️ Edit this page",
+        edit_saved_page_title: "Edit saved page",
+        save_edits: "Save changes",
         ocr_title: "Extracted Text (OCR)",
         ocr_placeholder: "Extracted text will appear here...",
         copy_text: "Copy Text",
