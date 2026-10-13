@@ -301,7 +301,7 @@ function setupEventListeners() {
     if ($('galleryInput')) $('galleryInput').onchange = handleImageCapture;
 
     // Editor
-    $('closeEditorBtn').onclick = () => closeModal('editorModal');
+    $('closeEditorBtn').onclick = leaveEditor;
     $('editorDoneBtn').onclick = finishEditing;
     $$('.editor-tab').forEach(tab => tab.onclick = () => switchEditorTab(tab.dataset.tab));
 
@@ -859,7 +859,7 @@ function closeModal(modalId) {
     stopPolling();
     // Re-adiciona hidden após a transição terminar
     setTimeout(() => {
-        if (el) el.classList.add('hidden');
+        if (el && !el.classList.contains('open')) el.classList.add('hidden');
     }, 320);
     document.body.style.overflow = '';
 }
@@ -900,11 +900,28 @@ function handleImageCapture(event) {
 // ============================================
 // Editor
 // ============================================
-function openEditor(img) {
+let editorSource = 'file';
+
+function leaveEditor() {
+    const source = editorSource;
+    editorSource = 'file';
+    closeModal('editorModal');
+    if (source.startsWith('camera')) {
+        state.originalImage = null;
+        state.currentImage = null;
+        startLiveCamera(source === 'camera-batch');
+    }
+}
+
+function openEditor(img, source = 'file') {
+    editorSource = source;
     if (img) {
         state.originalImage = img;
         state.currentImage = img;
     }
+    $('editorTitle').textContent = source.startsWith('camera') ? 'Revisar recorte' : 'Editor';
+    $('closeEditorBtn').setAttribute('aria-label', source.startsWith('camera') ? 'Fotografar novamente' : 'Voltar');
+    $('editorDoneBtn').setAttribute('aria-label', 'Aplicar recorte e continuar');
     state.currentFilter = 'magic';
     $$('.filter-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.filter === 'magic'));
     openModal('editorModal');
@@ -1844,10 +1861,31 @@ function finishEditing() {
     }
     showLoading('Processando...');
 
-    setTimeout(() => {
+    setTimeout(async () => {
         const croppedImage = getCroppedImage();
         hideLoading();
         closeModal('editorModal');
+
+        const source = editorSource;
+        editorSource = 'file';
+        if (source === 'camera-batch') {
+            state.multiPageImages.push(croppedImage);
+            $('liveBatchCountVal').textContent = state.multiPageImages.length;
+            showToast(`Página ${state.multiPageImages.length} adicionada!`, 'success');
+            await startLiveCamera(true);
+            return;
+        }
+        if (source === 'camera-id') {
+            try {
+                const isFront = idCardScanState.step === 1;
+                await handleIdCardCapture(croppedImage);
+                if (isFront) await startLiveCamera(false);
+            } catch (error) {
+                console.error('Erro ao processar RG/CNH:', error);
+                showToast('Não foi possível processar o documento. Tente novamente.', 'error');
+            }
+            return;
+        }
 
         if (state.multiPageImages.length > 0) {
             // Already has pages — go straight to multi-page modal
@@ -8753,6 +8791,21 @@ function stopLiveCamera() {
     }
 }
 
+// Pause the live preview while a batch or ID photo is cropped, without losing
+// the capture mode or the already scanned pages.
+function suspendLiveCameraForEditor() {
+    stopRealtimeEdgeTracking();
+    isTorchOn = false;
+    $('cameraTorchBtn')?.classList.remove('active');
+    if (liveCameraStream) {
+        liveCameraStream.getTracks().forEach(track => track.stop());
+        liveCameraStream = null;
+    }
+    const video = $('liveCameraVideo');
+    if (video) video.srcObject = null;
+    closeModal('liveCameraModal');
+}
+
 async function switchLiveCamera() {
     currentCameraFacing = currentCameraFacing === 'environment' ? 'user' : 'environment';
     isTorchOn = false;
@@ -8972,29 +9025,18 @@ async function captureLivePhoto() {
     }
 
     hideLoading();
-    if(!await ScannerUX.reviewCapture(dataUrl))return;
+    const source = idCardScanState.active ? 'camera-id' :
+        isLiveBatchActive ? 'camera-batch' : 'camera';
+    if (source === 'camera') stopLiveCamera();
+    else suspendLiveCameraForEditor();
 
-    // Check if ID Card Mode is active
-    if (idCardScanState && idCardScanState.active) {
-        await handleIdCardCapture(dataUrl);
-        return;
-    }
-
-    if (isLiveBatchActive) {
-        state.multiPageImages.push(dataUrl);
-        const countVal = $('liveBatchCountVal');
-        if (countVal) countVal.textContent = state.multiPageImages.length;
-        showToast(`Página ${state.multiPageImages.length} capturada em HD!`, 'success');
-    } else {
-        stopLiveCamera();
-        const img = new Image();
-        img.onload = () => {
-            state.originalImage = img;
-            state.currentImage = img;
-            openEditor(img);
-        };
-        img.src = dataUrl;
-    }
+    const img = new Image();
+    img.onload = () => openEditor(img, source);
+    img.onerror = () => {
+        showToast('Não foi possível abrir a foto. Tente novamente.', 'error');
+        startLiveCamera(source === 'camera-batch');
+    };
+    img.src = dataUrl;
 }
 
 // Global exposes
