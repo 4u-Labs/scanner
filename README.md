@@ -39,11 +39,13 @@ O **DocScan Pro** é uma solução completa de digitalização e processamento d
 
 ---
 
-## 📄 Licença & Direitos
+## 📄 Licença & Termos de Uso / License
 
-© 2026 **4U.IA.BR**. Todos os direitos reservados.  
-Este repositório é publicado para fins de vitrine, transparência e portfólio.
+Este projeto é distribuído sob o modelo **Source-Available** (código disponível publicamente para consulta, aprendizado e auditoria técnica).
 
-## Backup, busca e limites
+* ✅ **Permitido:** Estudo pessoal, aprendizado, testes locais e auditoria de código.
+* ❌ **Proibido:** Uso comercial (direto ou indireto), redistribuição, revenda ou criação de produtos derivados sem autorização prévia por escrito.
 
-O backup JSON v3 inclui os arquivos reais e pastas criptografadas, com verificação SHA-256. Guarde as senhas das pastas separadamente. A importação valida o conteúdo e restaura registros em uma transação. A busca cobre nome, etiquetas e texto OCR já extraído, com filtros por pasta, formato e datas. PDFs importados têm limite de 20 MB e 20 páginas; o processamento é progressivo e pode ser cancelado. Capturas em lote aceitam até 30 imagens (15 MB cada, 80 MB no total).
+Todos os direitos autorais e patrimoniais pertencem à **4U** (4u.ia.br). Para detalhes completos e condições legais, consulte o arquivo [LICENSE](LICENSE).
+
+Para parcerias ou licenciamento de uso comercial do motor do DocScan Pro, entre em contato através de [4u.ia.br](https://4u.ia.br).
